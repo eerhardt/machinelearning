@@ -7,7 +7,6 @@ using Float = System.Single;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using Microsoft.ML.Runtime.CommandLine;
 
 namespace Microsoft.ML.Runtime.RunTests
 {
@@ -15,6 +14,8 @@ namespace Microsoft.ML.Runtime.RunTests
     using Microsoft.ML.Runtime.EntryPoints;
     using Microsoft.ML.Runtime.FastTree;
     using Microsoft.ML.Runtime.FastTree.Internal;
+    using Microsoft.ML.Runtime.LightGBM;
+    using Microsoft.ML.Runtime.SymSgd;
     using Microsoft.ML.TestFramework;
     using System.Linq;
     using System.Runtime.InteropServices;
@@ -27,6 +28,20 @@ namespace Microsoft.ML.Runtime.RunTests
     /// </summary>
     public sealed partial class TestPredictors : BaseTestPredictors
     {
+        protected override void InitializeCore()
+        {
+            base.InitializeCore();
+            InitializeEnvironment(Env);
+        }
+
+        protected override void InitializeEnvironment(IHostEnvironment environment)
+        {
+            base.InitializeEnvironment(environment);
+
+            environment.ComponentCatalog.RegisterAssembly(typeof(LightGbmBinaryPredictor).Assembly);
+            environment.ComponentCatalog.RegisterAssembly(typeof(SymSgdClassificationTrainer).Assembly);
+        }
+
         /// <summary>
         /// Get a list of datasets for binary classifier base test.
         /// </summary>
@@ -94,6 +109,30 @@ namespace Microsoft.ML.Runtime.RunTests
             var binaryPredictors = new[] { TestLearners.perceptron };
             var binaryClassificationDatasets = GetDatasetsForBinaryClassifierBaseTest();
             RunAllTests(binaryPredictors, binaryClassificationDatasets);
+            Done();
+        }
+
+        [Fact]
+        [TestCategory("Binary")]
+        [TestCategory("SimpleLearners")]
+        public void BinaryPriorTest()
+        {
+            var predictors = new[] {
+                TestLearners.binaryPrior};
+            var datasets = GetDatasetsForBinaryClassifierBaseTest();
+            RunAllTests(predictors, datasets);
+            Done();
+        }
+
+        [Fact]
+        [TestCategory("Binary")]
+        [TestCategory("SimpleLearners")]
+        public void BinaryRandomTest()
+        {
+            var predictors = new[] {
+                TestLearners.binaryRandom};
+            var datasets = GetDatasetsForBinaryClassifierBaseTest();
+            RunAllTests(predictors, datasets, extraSettings: new[] { "n=1" });
             Done();
         }
 
@@ -495,7 +534,7 @@ namespace Microsoft.ML.Runtime.RunTests
         public void RegressorLightGBMTest()
         {
             var regPredictors = new[] { TestLearners.LightGBMReg };
-            var regDatasets = new[] { TestDatasets.winequality };
+            var regDatasets = new[] { TestDatasets.generatedRegressionDataset };
             RunAllTests(regPredictors, regDatasets);
             Done();
         }
@@ -509,7 +548,7 @@ namespace Microsoft.ML.Runtime.RunTests
         public void RegressorLightGBMMAETest()
         {
             var regPredictors = new[] { TestLearners.LightGBMRegMae };
-            var regDatasets = new[] { TestDatasets.winequality };
+            var regDatasets = new[] { TestDatasets.generatedRegressionDataset };
             RunAllTests(regPredictors, regDatasets, extraTag: "MAE");
             Done();
         }
@@ -523,7 +562,7 @@ namespace Microsoft.ML.Runtime.RunTests
         public void RegressorLightGBMRMSETest()
         {
             var regPredictors = new[] { TestLearners.LightGBMRegRmse };
-            var regDatasets = new[] { TestDatasets.winequality };
+            var regDatasets = new[] { TestDatasets.generatedRegressionDataset };
             RunAllTests(regPredictors, regDatasets, extraTag: "RMSE");
             Done();
         }
@@ -631,23 +670,23 @@ namespace Microsoft.ML.Runtime.RunTests
             {
                 var scoreGetter = curs.GetGetter<float>(scoreCol);
                 var probGetter = curs.GetGetter<float>(probCol);
-                var predGetter = curs.GetGetter<DvBool>(predCol);
+                var predGetter = curs.GetGetter<bool>(predCol);
                 var scoreGetters = new ValueGetter<float>[3];
                 var probGetters = new ValueGetter<float>[3];
-                var predGetters = new ValueGetter<DvBool>[3];
+                var predGetters = new ValueGetter<bool>[3];
                 for (int i = 0; i < 3; i++)
                 {
                     scoreGetters[i] = cursors[i].GetGetter<float>(scoreColArray[i]);
                     probGetters[i] = cursors[i].GetGetter<float>(probColArray[i]);
-                    predGetters[i] = cursors[i].GetGetter<DvBool>(predColArray[i]);
+                    predGetters[i] = cursors[i].GetGetter<bool>(predColArray[i]);
                 }
 
                 float score = 0;
                 float prob = 0;
-                var pred = default(DvBool);
+                bool pred = default;
                 var scores = new float[3];
                 var probs = new float[3];
-                var preds = new DvBool[3];
+                var preds = new bool[3];
                 while (curs.MoveNext())
                 {
                     scoreGetter(ref score);
@@ -662,7 +701,7 @@ namespace Microsoft.ML.Runtime.RunTests
                     }
                     Assert.Equal(score, 0.4 * scores.Sum() / 3, 5);
                     Assert.Equal(prob, 1 / (1 + Math.Exp(-score)), 6);
-                    Assert.True(pred.IsTrue == score > 0);
+                    Assert.True(pred == score > 0);
                 }
             }
         }
@@ -898,7 +937,7 @@ namespace Microsoft.ML.Runtime.RunTests
         [TestCategory("Regressor")]
         public void RegressorOlsTestOne()
         {
-            Run_TrainTest(TestLearners.Ols, TestDatasets.winequality);
+            Run_TrainTest(TestLearners.Ols, TestDatasets.generatedRegressionDataset);
             Done();
         }
 
@@ -911,7 +950,7 @@ namespace Microsoft.ML.Runtime.RunTests
         public void RegressorSdcaTest()
         {
             var regressionPredictors = new[] { TestLearners.Sdcar, TestLearners.SdcarNorm, TestLearners.SdcarReg };
-            RunAllTests(regressionPredictors, new[] { TestDatasets.winequality });
+            RunAllTests(regressionPredictors, new[] { TestDatasets.generatedRegressionDataset });
             Done();
         }
 
@@ -1532,7 +1571,7 @@ output Out [3] from H all;
         [TestCategory("Anomaly")]
         public void CompareSvmPredictorResultsToLibSvm()
         {
-            using (var env = new TlcEnvironment(1, conc: 1))
+            using (var env = new LocalEnvironment(1, conc: 1))
             {
                 IDataView trainView = new TextLoader(env, new TextLoader.Arguments(), new MultiFileSource(GetDataPath(TestDatasets.mnistOneClass.trainFilename)));
                 trainView =

@@ -108,7 +108,8 @@ namespace Microsoft.ML.Runtime.RunTests
             string logPath = Path.Combine(logDir, FullTestName + LogSuffix);
             LogWriter = OpenWriter(logPath);
             _passed = true;
-            Env = new ConsoleEnvironment(42, outWriter: LogWriter, errWriter: LogWriter);
+            Env = new ConsoleEnvironment(42, outWriter: LogWriter, errWriter: LogWriter)
+                .AddStandardComponents();
             InitializeCore();
         }
 
@@ -133,7 +134,7 @@ namespace Microsoft.ML.Runtime.RunTests
         }
 
         // This method is used by subclass to dispose of disposable objects
-        // such as TlcEnvironment.
+        // such as LocalEnvironment.
         // It is called as a first step in test clean up.
         protected virtual void CleanupCore()
         {

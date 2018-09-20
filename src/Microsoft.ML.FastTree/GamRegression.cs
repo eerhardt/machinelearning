@@ -40,7 +40,7 @@ namespace Microsoft.ML.Runtime.FastTree
 
         public override PredictionKind PredictionKind => PredictionKind.Regression;
 
-        public RegressionGamTrainer(IHostEnvironment env, Arguments args)
+        internal RegressionGamTrainer(IHostEnvironment env, Arguments args)
             : base(env, args) { }
 
         internal override void CheckLabel(RoleMappedData data)
@@ -87,7 +87,8 @@ namespace Microsoft.ML.Runtime.FastTree
                 verWrittenCur: 0x00010001,
                 verReadableCur: 0x00010001,
                 verWeCanReadBack: 0x00010001,
-                loaderSignature: LoaderSignature);
+                loaderSignature: LoaderSignature,
+                loaderAssemblyName: typeof(RegressionGamPredictor).Assembly.FullName);
         }
 
         public static RegressionGamPredictor Create(IHostEnvironment env, ModelLoadContext ctx)

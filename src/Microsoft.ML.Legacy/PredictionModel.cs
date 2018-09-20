@@ -49,7 +49,7 @@ namespace Microsoft.ML.Legacy
             if (!schema.HasSlotNames(colIndex, expectedLabelCount))
                 return false;
 
-            VBuffer<DvText> labels = default;
+            VBuffer<ReadOnlyMemory<char>> labels = default;
             schema.GetMetadata(MetadataUtils.Kinds.SlotNames, colIndex, ref labels);
 
             if (labels.Length != expectedLabelCount)
@@ -126,6 +126,7 @@ namespace Microsoft.ML.Legacy
                 throw new ArgumentNullException(nameof(stream));
 
             using (var environment = new ConsoleEnvironment())
+            using (AssemblyLoadingUtils.CreateAssemblyRegistrar(environment))
             {
                 BatchPredictionEngine<TInput, TOutput> predictor =
                     environment.CreateBatchPredictionEngine<TInput, TOutput>(stream);

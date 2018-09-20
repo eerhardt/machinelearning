@@ -108,21 +108,22 @@ namespace Microsoft.ML.Runtime.Data
             using (var ch = env.Register("SchemaBindableWrapper").Start("Bind"))
             {
                 ch.CheckValue(schema, nameof(schema));
-                ch.CheckParam(schema.Feature != null, nameof(schema), "Need a features column");
-                // Ensure that the feature column type is compatible with the needed input type.
-                var type = schema.Feature.Type;
-                var typeIn = ValueMapper != null ? ValueMapper.InputType : new VectorType(NumberType.Float);
-                if (type != typeIn)
+                if (schema.Feature != null)
                 {
-                    if (!type.ItemType.Equals(typeIn.ItemType))
-                        throw ch.Except("Incompatible features column type item type: '{0}' vs '{1}'", type.ItemType, typeIn.ItemType);
-                    if (type.IsVector != typeIn.IsVector)
-                        throw ch.Except("Incompatible features column type: '{0}' vs '{1}'", type, typeIn);
-                    // typeIn can legally have unknown size.
-                    if (type.VectorSize != typeIn.VectorSize && typeIn.VectorSize > 0)
-                        throw ch.Except("Incompatible features column type: '{0}' vs '{1}'", type, typeIn);
+                    // Ensure that the feature column type is compatible with the needed input type.
+                    var type = schema.Feature.Type;
+                    var typeIn = ValueMapper != null ? ValueMapper.InputType : new VectorType(NumberType.Float);
+                    if (type != typeIn)
+                    {
+                        if (!type.ItemType.Equals(typeIn.ItemType))
+                            throw ch.Except("Incompatible features column type item type: '{0}' vs '{1}'", type.ItemType, typeIn.ItemType);
+                        if (type.IsVector != typeIn.IsVector)
+                            throw ch.Except("Incompatible features column type: '{0}' vs '{1}'", type, typeIn);
+                        // typeIn can legally have unknown size.
+                        if (type.VectorSize != typeIn.VectorSize && typeIn.VectorSize > 0)
+                            throw ch.Except("Incompatible features column type: '{0}' vs '{1}'", type, typeIn);
+                    }
                 }
-
                 var mapper = BindCore(ch, schema);
                 ch.Done();
                 return mapper;
@@ -241,7 +242,8 @@ namespace Microsoft.ML.Runtime.Data
                 verWrittenCur: 0x00010002, // ISchemaBindableWrapper update
                 verReadableCur: 0x00010002,
                 verWeCanReadBack: 0x00010002,
-                loaderSignature: LoaderSignature);
+                loaderSignature: LoaderSignature,
+                loaderAssemblyName: typeof(SchemaBindablePredictorWrapper).Assembly.FullName);
         }
 
         private readonly string _scoreColumnKind;
@@ -352,7 +354,8 @@ namespace Microsoft.ML.Runtime.Data
                 verWrittenCur: 0x00010002, // ISchemaBindableWrapper update
                 verReadableCur: 0x00010002,
                 verWeCanReadBack: 0x00010002,
-                loaderSignature: LoaderSignature);
+                loaderSignature: LoaderSignature,
+                loaderAssemblyName: typeof(SchemaBindableBinaryPredictorWrapper).Assembly.FullName);
         }
 
         private readonly IValueMapperDist _distMapper;
@@ -463,15 +466,18 @@ namespace Microsoft.ML.Runtime.Data
                 Contracts.AssertValue(parent);
                 Contracts.Assert(parent._distMapper != null);
                 Contracts.AssertValue(schema);
-                Contracts.AssertValue(schema.Feature);
+                Contracts.AssertValueOrNull(schema.Feature);
 
                 _parent = parent;
                 _inputSchema = schema;
                 _outputSchema = new BinaryClassifierSchema();
 
-                var typeSrc = _inputSchema.Feature.Type;
-                Contracts.Check(typeSrc.IsKnownSizeVector && typeSrc.ItemType == NumberType.Float,
-                    "Invalid feature column type");
+                if (schema.Feature != null)
+                {
+                    var typeSrc = _inputSchema.Feature.Type;
+                    Contracts.Check(typeSrc.IsKnownSizeVector && typeSrc.ItemType == NumberType.Float,
+                        "Invalid feature column type");
+                }
             }
 
             public RoleMappedSchema InputSchema { get { return _inputSchema; } }
@@ -484,7 +490,7 @@ namespace Microsoft.ML.Runtime.Data
             {
                 for (int i = 0; i < OutputSchema.ColumnCount; i++)
                 {
-                    if (predicate(i))
+                    if (predicate(i) && _inputSchema.Feature != null)
                         return col => col == _inputSchema.Feature.Index;
                 }
                 return col => false;
@@ -492,7 +498,7 @@ namespace Microsoft.ML.Runtime.Data
 
             public IEnumerable<KeyValuePair<RoleMappedSchema.ColumnRole, string>> GetInputColumnRoles()
             {
-                yield return RoleMappedSchema.ColumnRole.Feature.Bind(_inputSchema.Feature.Name);
+                yield return RoleMappedSchema.ColumnRole.Feature.Bind(_inputSchema.Feature != null ? _inputSchema.Feature.Name : null);
             }
 
             private Delegate[] CreateGetters(IRow input, bool[] active)
@@ -504,7 +510,7 @@ namespace Microsoft.ML.Runtime.Data
                 if (active[0] || active[1])
                 {
                     // Put all captured locals at this scope.
-                    var featureGetter = input.GetGetter<VBuffer<Float>>(_inputSchema.Feature.Index);
+                    var featureGetter = _inputSchema.Feature!= null ? input.GetGetter<VBuffer<Float>>(_inputSchema.Feature.Index) : null;
                     Float prob = 0;
                     Float score = 0;
                     long cachedPosition = -1;
@@ -543,7 +549,9 @@ namespace Microsoft.ML.Runtime.Data
                 Contracts.AssertValue(mapper);
                 if (cachedPosition != input.Position)
                 {
-                    featureGetter(ref features);
+                    if (featureGetter != null)
+                        featureGetter(ref features);
+
                     mapper(ref features, ref score, ref prob);
                     cachedPosition = input.Position;
                 }
@@ -575,7 +583,8 @@ namespace Microsoft.ML.Runtime.Data
                 verWrittenCur: 0x00010002, // ISchemaBindableWrapper update
                 verReadableCur: 0x00010002,
                 verWeCanReadBack: 0x00010002,
-                loaderSignature: LoaderSignature);
+                loaderSignature: LoaderSignature,
+                loaderAssemblyName: typeof(SchemaBindableQuantileRegressionPredictor).Assembly.FullName);
         }
 
         private readonly IQuantileValueMapper _qpred;
@@ -672,7 +681,7 @@ namespace Microsoft.ML.Runtime.Data
         private sealed class Schema : ScoreMapperSchemaBase
         {
             private readonly string[] _slotNames;
-            private readonly MetadataUtils.MetadataGetter<VBuffer<DvText>> _getSlotNames;
+            private readonly MetadataUtils.MetadataGetter<VBuffer<ReadOnlyMemory<char>>> _getSlotNames;
 
             public Schema(ColumnType scoreType, Double[] quantiles)
                 : base(scoreType, MetadataUtils.Const.ScoreColumnKind.QuantileRegression)
@@ -731,7 +740,7 @@ namespace Microsoft.ML.Runtime.Data
                 return new VectorType(NumberType.Float, _slotNames.Length);
             }
 
-            private void GetSlotNames(int iinfo, ref VBuffer<DvText> dst)
+            private void GetSlotNames(int iinfo, ref VBuffer<ReadOnlyMemory<char>> dst)
             {
                 Contracts.Assert(iinfo == 0);
                 Contracts.Assert(Utils.Size(_slotNames) > 0);
@@ -739,10 +748,10 @@ namespace Microsoft.ML.Runtime.Data
                 int size = Utils.Size(_slotNames);
                 var values = dst.Values;
                 if (Utils.Size(values) < size)
-                    values = new DvText[size];
+                    values = new ReadOnlyMemory<char>[size];
                 for (int i = 0; i < _slotNames.Length; i++)
-                    values[i] = new DvText(_slotNames[i]);
-                dst = new VBuffer<DvText>(size, values, dst.Indices);
+                    values[i] = _slotNames[i].AsMemory();
+                dst = new VBuffer<ReadOnlyMemory<char>>(size, values, dst.Indices);
             }
         }
     }

@@ -557,7 +557,7 @@ namespace Microsoft.ML.Runtime.Data
                     Host.Check(typeSrc.RawType == typeof(TFloat));
                     bldr.AddPrimitive("CdfMean", typeSrc, Mean);
                     bldr.AddPrimitive("CdfStdDev", typeSrc, Stddev);
-                    bldr.AddPrimitive("CdfUseLog", BoolType.Instance, (DvBool)UseLog);
+                    bldr.AddPrimitive("CdfUseLog", BoolType.Instance, UseLog);
                 }
             }
 
@@ -590,7 +590,7 @@ namespace Microsoft.ML.Runtime.Data
                     Host.Check(typeSrc.ItemType.RawType == typeof(TFloat));
                     bldr.AddGetter<VBuffer<TFloat>>("CdfMean", typeSrc, MeanMetadataGetter);
                     bldr.AddGetter<VBuffer<TFloat>>("CdfStdDev", typeSrc, StddevMetadataGetter);
-                    bldr.AddPrimitive("CdfUseLog", BoolType.Instance, (DvBool)UseLog);
+                    bldr.AddPrimitive("CdfUseLog", BoolType.Instance, UseLog);
                 }
 
                 private void MeanMetadataGetter(int col, ref VBuffer<TFloat> dst)
@@ -615,7 +615,8 @@ namespace Microsoft.ML.Runtime.Data
                     verWrittenCur: 0x00010001, // Initial
                     verReadableCur: 0x00010001,
                     verWeCanReadBack: 0x00010001,
-                    loaderSignature: LoaderSignature);
+                    loaderSignature: LoaderSignature,
+                loaderAssemblyName: typeof(CdfColumnFunction).Assembly.FullName);
             }
         }
 
@@ -677,7 +678,8 @@ namespace Microsoft.ML.Runtime.Data
                     verWrittenCur: 0x00010001, // Initial
                     verReadableCur: 0x00010001,
                     verWeCanReadBack: 0x00010001,
-                    loaderSignature: LoaderSignature);
+                    loaderSignature: LoaderSignature,
+                loaderAssemblyName: typeof(BinColumnFunction).Assembly.FullName);
             }
         }
 
@@ -1139,7 +1141,8 @@ namespace Microsoft.ML.Runtime.Data
                 verWrittenCur: 0x00010003, // Scales multiply instead of divide
                 verReadableCur: 0x00010003,
                 verWeCanReadBack: 0x00010003,
-                loaderSignature: LoaderSignature);
+                loaderSignature: LoaderSignature,
+                loaderAssemblyName: typeof(AffineNormSerializationUtils).Assembly.FullName);
         }
     }
 
@@ -1154,7 +1157,8 @@ namespace Microsoft.ML.Runtime.Data
                 verWrittenCur: 0x00010001,
                 verReadableCur: 0x00010001,
                 verWeCanReadBack: 0x00010001,
-                loaderSignature: LoaderSignature);
+                loaderSignature: LoaderSignature,
+                loaderAssemblyName: typeof(BinNormSerializationUtils).Assembly.FullName);
         }
     }
 

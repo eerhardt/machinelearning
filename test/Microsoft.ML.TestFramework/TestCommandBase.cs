@@ -14,6 +14,7 @@ using Microsoft.ML.Runtime.Data;
 using Microsoft.ML.Runtime.Internal.Utilities;
 using Microsoft.ML.Runtime.Model;
 using Microsoft.ML.Runtime.Tools;
+using Microsoft.ML.TestFramework;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -270,6 +271,11 @@ namespace Microsoft.ML.Runtime.RunTests
             }
         }
 
+        protected virtual void InitializeEnvironment(IHostEnvironment environment)
+        {
+            environment.AddStandardComponents();
+        }
+
         /// <summary>
         /// Runs a command with some arguments. Note that the input
         /// <paramref name="toCompare"/> objects are used for comparison only.
@@ -283,6 +289,8 @@ namespace Microsoft.ML.Runtime.RunTests
             using (var newWriter = OpenWriter(outputPath.Path))
             using (var env = new ConsoleEnvironment(42, outWriter: newWriter, errWriter: newWriter))
             {
+                InitializeEnvironment(env);
+
                 int res;
                 res = MainForTest(env, newWriter, string.Format("{0} {1}", cmdName, args), ctx.BaselineProgress);
                 if (res != 0)
@@ -2031,15 +2039,16 @@ namespace Microsoft.ML.Runtime.RunTests
         }
 
         [Fact]
-        public void DataTypes()
+        public void Datatypes()
         {
-            //Skip for linux because DATE/TIME format is different.
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-                return;
-
             string idvPath = GetDataPath("datatypes.idv");
+            OutputPath intermediateData = CreateOutputPath("intermediateDatatypes.idv");
             OutputPath textOutputPath = CreateOutputPath("datatypes.txt");
             TestCore("savedata", idvPath, "loader=binary", "saver=text", textOutputPath.Arg("dout"));
+            _step++;
+            TestCore("savedata", idvPath, "loader=binary", "saver=binary", intermediateData.ArgOnly("dout"));
+            _step++;
+            TestCore("savedata", intermediateData.Path, "loader=binary", "saver=text", textOutputPath.Arg("dout"));
             Done();
         }
     }

@@ -500,7 +500,8 @@ namespace Microsoft.ML.Runtime.HalLearners
                 verWrittenCur: 0x00010001,
                 verReadableCur: 0x00010001,
                 verWeCanReadBack: 0x00010001,
-                loaderSignature: LoaderSignature);
+                loaderSignature: LoaderSignature,
+                loaderAssemblyName: typeof(OlsLinearRegressionPredictor).Assembly.FullName);
         }
 
         // The following will be null iff RSquaredAdjusted is NaN.
@@ -688,7 +689,7 @@ namespace Microsoft.ML.Runtime.HalLearners
 
         public override void SaveSummary(TextWriter writer, RoleMappedSchema schema)
         {
-            var names = default(VBuffer<DvText>);
+            var names = default(VBuffer<ReadOnlyMemory<char>>);
             MetadataUtils.GetSlotNames(schema, RoleMappedSchema.ColumnRole.Feature, Weight.Length, ref names);
 
             writer.WriteLine("Ordinary Least Squares Model Summary");
@@ -706,7 +707,7 @@ namespace Microsoft.ML.Runtime.HalLearners
                 for (int i = 0; i < coeffs.Length; i++)
                 {
                     var name = names.GetItemOrDefault(i);
-                    writer.WriteLine(format, i, DvText.Identical(name, DvText.Empty) ? $"f{i}" : name.ToString(),
+                    writer.WriteLine(format, i, name.IsEmpty ? $"f{i}" : name.ToString(),
                         coeffs[i], _standardErrors[i + 1], _tValues[i + 1], _pValues[i + 1]);
                 }
             }
@@ -721,7 +722,7 @@ namespace Microsoft.ML.Runtime.HalLearners
                 for (int i = 0; i < coeffs.Length; i++)
                 {
                     var name = names.GetItemOrDefault(i);
-                    writer.WriteLine(format, i, DvText.Identical(name, DvText.Empty) ? $"f{i}" : name.ToString(), coeffs[i]);
+                    writer.WriteLine(format, i, name.IsEmpty ? $"f{i}" : name.ToString(), coeffs[i]);
                 }
             }
         }
