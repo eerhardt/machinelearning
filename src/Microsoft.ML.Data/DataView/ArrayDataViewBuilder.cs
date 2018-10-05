@@ -162,6 +162,19 @@ namespace Microsoft.ML.Runtime.Data
         }
 
         /// <summary>
+        /// Adds a DenseVector{T} valued column.
+        /// </summary>
+        public void AddColumn<T>(string name, ValueGetter<VBuffer<ReadOnlyMemory<char>>> getNames, PrimitiveType itemType, params DenseVector<T>[] values)
+        {
+            _host.CheckValue(getNames, nameof(getNames));
+            _host.CheckParam(itemType != null && itemType.RawType == typeof(T), nameof(itemType));
+            CheckLength(name, values);
+            _columns.Add(new DenseVectorColumn<T>(itemType, values));
+            _getSlotNames.Add(name, getNames);
+            _names.Add(name);
+        }
+
+        /// <summary>
         /// Adds a <c>ReadOnlyMemory</c> valued column from an array of strings.
         /// </summary>
         public void AddColumn(string name, params string[] values)
@@ -573,6 +586,22 @@ namespace Microsoft.ML.Runtime.Data
             protected override void CopyOut(ref VBuffer<T> src, ref VBuffer<T> dst)
             {
                 src.CopyTo(ref dst);
+            }
+        }
+
+        /// <summary>
+        /// A column of dense vectors.
+        /// </summary>
+        private sealed class DenseVectorColumn<T> : VectorColumn<DenseVector<T>, T>
+        {
+            public DenseVectorColumn(PrimitiveType itemType, DenseVector<T>[] values)
+                : base(itemType, values, v => v.Length)
+            {
+            }
+
+            protected override void CopyOut(ref DenseVector<T> src, ref VBuffer<T> dst)
+            {
+                VBufferUtils.Copy(src, ref dst);
             }
         }
 

@@ -12,6 +12,7 @@ using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
+using Microsoft.ML.Runtime.Data;
 
 namespace Microsoft.ML.Runtime.Internal.Utilities
 {
@@ -105,6 +106,16 @@ namespace Microsoft.ML.Runtime.Internal.Utilities
         {
             Contracts.AssertValueOrNull(x);
             return x == null ? 0 : x.Count;
+        }
+
+        public static int Size<T>(Memory<T> x)
+        {
+            return x.Length;
+        }
+
+        public static int Size<T>(DenseVector<T> x)
+        {
+            return x.Length;
         }
 
         public static int Size<TKey, TValue>(Dictionary<TKey, TValue> x)

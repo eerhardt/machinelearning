@@ -143,6 +143,12 @@ namespace Microsoft.ML.Runtime.Internal.Utilities
             return new VBuffer<T>(length, new T[length]);
         }
 
+        public static DenseVector<T> CreateDenseVector<T>(int length)
+        {
+            Contracts.CheckParam(length >= 0, nameof(length));
+            return new DenseVector<T>(new T[length], length);
+        }
+
         /// <summary>
         /// Applies <paramref name="visitor"/> to every explicitly defined element of the vector,
         /// in order of index.
@@ -578,6 +584,11 @@ namespace Microsoft.ML.Runtime.Internal.Utilities
             ApplyWithCore(ref src, ref dst, manip, outer: false);
         }
 
+        public static void ApplyWith<TSrc, TDst>(ref VBuffer<TSrc> src, ref DenseVector<TDst> dst, PairManipulator<TSrc, TDst> manip)
+        {
+            ApplyWithCore(ref src, ref dst, manip, outer: false);
+        }
+
         /// <summary>
         /// Applies the <see cref="PairManipulator{TSrc,TDst}"/> to each pair of elements
         /// where <paramref name="src"/> is defined, in order of index. It stores the result
@@ -630,8 +641,66 @@ namespace Microsoft.ML.Runtime.Internal.Utilities
             ApplyWithCoreCopy(ref src, ref dst, ref res, manip, outer: true);
         }
 
+        private static void ApplyWithCore<TSrc, TDst>(ref VBuffer<TSrc> src, ref DenseVector<TDst> dst, PairManipulator<TSrc, TDst> manip, bool outer)
+        {
+            Contracts.Check(src.Length == dst.Length, "Vectors must have the same dimensionality.");
+            Contracts.CheckValue(manip, nameof(manip));
+
+            // We handle all of the permutations of the density/sparsity of src through
+            // special casing below. Each subcase in turn handles appropriately the treatment
+            // of the "outer" parameter. There are 3, top level cases. Each case is
+            // considered in this order.
+
+            // 1. src.Count == 0.
+            // 2. src.Dense.
+            // 3. dst.Dense.
+
+            var dstSpan = dst.Values;
+
+            if (src.Count == 0)
+            {
+                // Major case 1, with src.Count == 0.
+                if (!outer)
+                    return;
+                for (int i = 0; i < dstSpan.Length; i++)
+                    manip(i, default(TSrc), ref dstSpan[i]);
+                return;
+            }
+
+            if (src.IsDense)
+            {
+                // Major case 2, with src.Dense.
+                // Both are now dense. Both cases of outer are covered.
+                for (int i = 0; i < dstSpan.Length; i++)
+                    manip(i, src.Values[i], ref dstSpan[i]);
+                return;
+            }
+
+            // Major case 3, with dense dst. Note that !src.Dense.
+            if (outer)
+            {
+                int sI = 0;
+                int sIndex = src.Indices[sI];
+                for (int i = 0; i < dstSpan.Length; ++i)
+                {
+                    if (i == sIndex)
+                    {
+                        manip(i, src.Values[sI], ref dstSpan[i]);
+                        sIndex = ++sI == src.Count ? src.Length : src.Indices[sI];
+                    }
+                    else
+                        manip(i, default(TSrc), ref dstSpan[i]);
+                }
+            }
+            else
+            {
+                for (int i = 0; i < src.Count; i++)
+                    manip(src.Indices[i], src.Values[i], ref dstSpan[src.Indices[i]]);
+            }
+        }
+
         /// <summary>
-        /// The actual implementation of <see cref="ApplyWith"/> and
+        /// The actual implementation of <see cref="ApplyWith{TSrc, TDst}(ref VBuffer{TSrc}, ref VBuffer{TDst}, PairManipulator{TSrc, TDst})"/> and
         /// <see cref="ApplyWithEitherDefined{TSrc,TDst}"/>, that has internal branches on the implementation
         /// where necessary depending on whether this is an inner or outer join of the
         /// indices of <paramref name="src"/> on <paramref name="dst"/>.
@@ -1147,10 +1216,10 @@ namespace Microsoft.ML.Runtime.Internal.Utilities
         /// storing the result in <paramref name="dst"/>, overwriting any of its existing contents.
         /// The contents of <paramref name="dst"/> do not affect calculation. If you instead wish
         /// to calculate a function that reads and writes <paramref name="dst"/>, see
-        /// <see cref="ApplyWith{TSrc,TDst}"/> and <see cref="ApplyWithEitherDefined{TSrc,TDst}"/>. Post-operation,
+        /// <see cref="ApplyWith{TSrc, TDst}(ref VBuffer{TSrc}, ref VBuffer{TDst}, PairManipulator{TSrc, TDst})"/> and <see cref="ApplyWithEitherDefined{TSrc,TDst}"/>. Post-operation,
         /// <paramref name="dst"/> will be dense iff <paramref name="src"/> is dense.
         /// </summary>
-        /// <seealso cref="ApplyWith{TSrc,TDst}"/>
+        /// <seealso cref="ApplyWith{TSrc, TDst}(ref VBuffer{TSrc}, ref VBuffer{TDst}, PairManipulator{TSrc, TDst})"/>
         /// <seealso cref="ApplyWithEitherDefined{TSrc,TDst}"/>
         public static void ApplyIntoEitherDefined<TSrc, TDst>(ref VBuffer<TSrc> src, ref VBuffer<TDst> dst, Func<int, TSrc, TDst> func)
         {
@@ -1378,6 +1447,21 @@ namespace Microsoft.ML.Runtime.Internal.Utilities
                 src.CopyTo(values);
             }
             dst = new VBuffer<T>(length, values, dst.Indices);
+        }
+
+        /// <summary>
+        /// Copy from a source DenseVector to the given VBuffer destination.
+        /// </summary>
+        public static void Copy<T>(in DenseVector<T> src, ref VBuffer<T> dst)
+        {
+            var values = dst.Values;
+            if (src.Length > 0)
+            {
+                if (Utils.Size(values) < src.Length)
+                    values = new T[src.Length];
+                src.Values.CopyTo(values);
+            }
+            dst = new VBuffer<T>(src.Length, values, dst.Indices);
         }
     }
 }

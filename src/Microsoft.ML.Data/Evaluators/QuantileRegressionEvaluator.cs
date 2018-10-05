@@ -26,7 +26,7 @@ using Microsoft.ML.Runtime.Model;
 namespace Microsoft.ML.Runtime.Data
 {
     public sealed class QuantileRegressionEvaluator :
-        RegressionEvaluatorBase<QuantileRegressionEvaluator.Aggregator, VBuffer<Float>, VBuffer<Double>>
+        RegressionEvaluatorBase<QuantileRegressionEvaluator.Aggregator, VBuffer<Float>, DenseVector<Double>>
     {
         public sealed class Arguments : ArgumentsBase
         {
@@ -95,31 +95,33 @@ namespace Microsoft.ML.Runtime.Data
             {
                 private readonly int _size;
 
-                public override VBuffer<Double> Rms
+                public override DenseVector<Double> Rms
                 {
                     get
                     {
                         var res = new Double[_size];
                         if (SumWeights != 0)
                         {
-                            foreach (var i in TotalL2Loss.Items())
-                                res[i.Key] = Math.Sqrt(i.Value / SumWeights);
+                            var totalL2Loss = TotalL2Loss.Values;
+                            for (int i = 0; i < totalL2Loss.Length; i++)
+                                res[i] = Math.Sqrt(totalL2Loss[i] / SumWeights);
                         }
-                        return new VBuffer<Double>(_size, res);
+                        return new DenseVector<Double>(res);
                     }
                 }
 
-                public override VBuffer<Double> RSquared
+                public override DenseVector<Double> RSquared
                 {
                     get
                     {
                         var res = new Double[_size];
                         if (SumWeights != 0)
                         {
-                            foreach (var i in TotalL2Loss.Items())
-                                res[i.Key] = 1 - i.Value / (TotalLabelSquaredW - TotalLabelW * TotalLabelW / SumWeights);
+                            var totalL2Loss = TotalL2Loss.Values;
+                            for (int i = 0; i < totalL2Loss.Length; i++)
+                                res[i] = 1 - totalL2Loss[i] / (TotalLabelSquaredW - TotalLabelW * TotalLabelW / SumWeights);
                         }
-                        return new VBuffer<Double>(_size, res);
+                        return new DenseVector<Double>(res);
                     }
                 }
 
@@ -127,12 +129,12 @@ namespace Microsoft.ML.Runtime.Data
                 {
                     Contracts.Assert(size > 0);
                     _size = size;
-                    TotalL1Loss = VBufferUtils.CreateDense<Double>(size);
-                    TotalL2Loss = VBufferUtils.CreateDense<Double>(size);
-                    TotalLoss = VBufferUtils.CreateDense<Double>(size);
+                    TotalL1Loss = VBufferUtils.CreateDenseVector<Double>(size);
+                    TotalL2Loss = VBufferUtils.CreateDenseVector<Double>(size);
+                    TotalLoss = VBufferUtils.CreateDenseVector<Double>(size);
                 }
 
-                protected override void UpdateCore(Float label, ref VBuffer<Float> score, ref VBuffer<Double> loss, Float weight)
+                protected override void UpdateCore(Float label, ref VBuffer<Float> score, ref DenseVector<Double> loss, Float weight)
                 {
                     AddL1AndL2Loss(label, ref score, weight);
                     AddCustomLoss(weight, ref loss);
@@ -165,40 +167,33 @@ namespace Microsoft.ML.Runtime.Data
                     }
                 }
 
-                private void AddCustomLoss(Float weight, ref VBuffer<Double> loss)
+                private void AddCustomLoss(Float weight, ref DenseVector<Double> loss)
                 {
                     Contracts.Check(loss.Length == TotalL1Loss.Length, "Vectors must have the same dimensionality.");
 
-                    if (loss.IsDense)
-                    {
-                        // Both are dense.
-                        for (int i = 0; i < loss.Length; i++)
-                            TotalLoss.Values[i] += loss.Values[i] * weight;
-                        return;
-                    }
-
-                    // loss is sparse, and _totalL1Loss is dense.
-                    for (int i = 0; i < loss.Count; i++)
-                        TotalLoss.Values[loss.Indices[i]] += loss.Values[i] * weight;
+                    var totalLossValues = TotalLoss.Values;
+                    var lossValues = loss.Values;
+                    for (int i = 0; i < loss.Length; i++)
+                        totalLossValues[i] += lossValues[i] * weight;
                 }
 
-                protected override void Normalize(ref VBuffer<Double> src, ref VBuffer<Double> dst)
+                protected override void Normalize(ref DenseVector<Double> src, ref DenseVector<Double> dst)
                 {
                     Contracts.Assert(SumWeights > 0);
-                    Contracts.Assert(src.IsDense);
 
-                    var values = dst.Values;
-                    if (Utils.Size(values) < src.Length)
-                        values = new Double[src.Length];
+                    var buffer = dst.Buffer;
+                    if (Utils.Size(buffer) < src.Length)
+                        buffer = new Double[src.Length];
                     var inv = 1 / SumWeights;
+                    var values = buffer.Span;
                     for (int i = 0; i < src.Length; i++)
                         values[i] = src.Values[i] * inv;
-                    dst = new VBuffer<Double>(src.Length, values);
+                    dst = new DenseVector<Double>(buffer, src.Length);
                 }
 
-                protected override VBuffer<Double> Zero()
+                protected override DenseVector<Double> Zero()
                 {
-                    return VBufferUtils.CreateDense<Double>(_size);
+                    return VBufferUtils.CreateDenseVector<Double>(_size);
                 }
             }
 
@@ -218,14 +213,14 @@ namespace Microsoft.ML.Runtime.Data
                 Host.Assert(size > 0);
                 Host.Assert(slotNames.Length == 0 || slotNames.Length == size);
                 Score = new VBuffer<float>(size, 0, null, null);
-                Loss = new VBuffer<Double>(size, 0, null, null);
+                Loss = new DenseVector<double>(new double[size]);
                 _counters = new Counters(size);
                 if (Weighted)
                     _weightedCounters = new Counters(size);
                 _slotNames = slotNames;
             }
 
-            protected override void ApplyLossFunction(ref VBuffer<float> score, float label, ref VBuffer<Double> loss)
+            protected override void ApplyLossFunction(ref VBuffer<float> score, float label, ref DenseVector<Double> loss)
             {
                 VBufferUtils.PairManipulator<Float, Double> lossFn =
                     (int slot, Float src, ref Double dst) => dst = LossFunction.Loss(src, label);
@@ -237,7 +232,7 @@ namespace Microsoft.ML.Runtime.Data
                 return VBufferUtils.HasNaNs(ref score);
             }
 
-            public override void AddColumn(ArrayDataViewBuilder dvBldr, string metricName, params VBuffer<Double>[] metric)
+            public override void AddColumn(ArrayDataViewBuilder dvBldr, string metricName, params DenseVector<Double>[] metric)
             {
                 Host.AssertValue(dvBldr);
                 if (_slotNames.Length > 0)
