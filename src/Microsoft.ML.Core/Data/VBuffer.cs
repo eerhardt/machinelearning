@@ -13,49 +13,47 @@ namespace Microsoft.ML.Runtime.Data
     /// readonly representation type for all VectorType instances used as a guarantee that
     /// the buffer cannot be modified.
     /// </summary>
-    public readonly struct ReadOnlyVBuffer<T>
+    public readonly ref struct ReadOnlyVBuffer<T>
     {
-        private readonly T[] _values;
-        private readonly int[] _indices;
-
         /// <summary>
         /// The logical length of the buffer.
         /// </summary>
         public readonly int Length;
 
-        /// <summary>
-        /// The number of items explicitly represented. This is == Length when the representation
-        /// is dense and &lt; Length when sparse.
-        /// </summary>
-        public readonly int Count;
+        // TODO: remove - this is just to help compile code for now
+        public int Count => Values.Length;
 
         /// <summary>
         /// The values. Only the first Count of these are valid.
         /// </summary>
-        public ReadOnlySpan<T> Values => _values;
+        public readonly ReadOnlySpan<T> Values;
 
         /// <summary>
         /// The indices. For a dense representation, Indices is not used. For a sparse representation
         /// it is parallel to values and specifies the logical indices for the corresponding values.
         /// </summary>
-        public ReadOnlySpan<int> Indices => _indices;
+        public readonly ReadOnlySpan<int> Indices;
 
         /// <summary>
-        /// Equivalent to Count == Length.
+        /// Gets a value indicating whether every logical element in the buffer is physically
+        /// represented in Values or not.
+        ///
+        /// Equivalent to Values.Length == Length.
         /// </summary>
-        public bool IsDense => Count == Length;
+        public bool IsDense => Values.Length == Length;
 
-        internal ReadOnlyVBuffer(int logicalLength, int valuesCount, T[] values, int[] indices)
+        internal ReadOnlyVBuffer(int logicalLength, ReadOnlySpan<T> values, ReadOnlySpan<int> indices)
         {
             Contracts.Assert(logicalLength >= 0);
-            Contracts.Assert(0 <= valuesCount && valuesCount <= logicalLength);
-            Contracts.Assert(Utils.Size(values) >= valuesCount);
-            Contracts.Assert(valuesCount == logicalLength || Utils.Size(indices) >= valuesCount);
+            Contracts.Assert(0 <= values.Length && values.Length <= logicalLength);
+            Contracts.Assert(
+                values.Length == logicalLength // is dense
+                ||
+                values.Length == indices.Length);
 
             Length = logicalLength;
-            Count = valuesCount;
-            _values = values;
-            _indices = indices;
+            Values = values;
+            Indices = indices;
         }
 
         public void GetItemOrDefault(int slot, ref T dst)
@@ -556,7 +554,13 @@ namespace Microsoft.ML.Runtime.Data
 
         private ReadOnlyVBuffer<T> CreateReadOnly()
         {
-            return new ReadOnlyVBuffer<T>(Length, Count, Values, Indices);
+            ReadOnlySpan<int> indices = default;
+            if (!IsDense)
+            {
+                indices = Indices.AsSpan(0, Count);
+            }
+
+            return new ReadOnlyVBuffer<T>(Length, Values.AsSpan(0, Count), indices);
         }
     }
 }

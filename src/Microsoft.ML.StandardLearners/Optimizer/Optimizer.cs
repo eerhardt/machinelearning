@@ -108,9 +108,9 @@ namespace Microsoft.ML.Runtime.Numeric
                 Init();
             }
 
-            public override Float Eval(in ReadOnlyVBuffer<Float> input, ref VBuffer<Float> gradient)
+            public override Float Eval(ref VBuffer<Float> input, ref VBuffer<Float> gradient)
             {
-                return Function(in input, ref gradient, ProgressProvider);
+                return Function(ref input, ref gradient, ProgressProvider);
             }
         }
 
@@ -141,7 +141,7 @@ namespace Microsoft.ML.Runtime.Numeric
             /// The function being optimized
             /// </summary>
             public abstract DifferentiableFunction Function { get; }
-            public abstract Float Eval(in ReadOnlyVBuffer<Float> input, ref VBuffer<Float> gradient);
+            public abstract Float Eval(ref VBuffer<Float> input, ref VBuffer<Float> gradient);
 
             /// <summary>
             /// The current point being explored
@@ -239,7 +239,7 @@ namespace Microsoft.ML.Runtime.Numeric
             // Leaf constructors must call this once they are fully initialized.
             protected virtual void Init()
             {
-                Value = LastValue = Eval(_x, ref _grad);
+                Value = LastValue = Eval(ref _x, ref _grad);
                 GradientCalculations++;
                 if (!FloatUtils.IsFinite(LastValue))
                     throw Ch.Except("Optimizer unable to proceed with loss function yielding {0}", LastValue);
@@ -412,7 +412,7 @@ namespace Microsoft.ML.Runtime.Numeric
                         });
                     }
 
-                    Value = Eval(_newX, ref _newGrad);
+                    Value = Eval(ref _newX, ref _newGrad);
                     GradientCalculations++;
                     if (Float.IsPositiveInfinity(Value))
                     {
@@ -493,7 +493,7 @@ namespace Microsoft.ML.Runtime.Numeric
                         });
                     }
 
-                    Value = Eval(_newX, ref _newGrad);
+                    Value = Eval(ref _newX, ref _newGrad);
                     GradientCalculations++;
                     if (!FloatUtils.IsFinite(Value))
                         throw ch.Except("Optimizer unable to proceed with loss function yielding {0}", Value);

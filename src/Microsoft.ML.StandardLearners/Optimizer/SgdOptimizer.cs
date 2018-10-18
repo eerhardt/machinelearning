@@ -15,7 +15,7 @@ namespace Microsoft.ML.Runtime.Numeric
     /// </summary>
     /// <param name="x">Current iterate</param>
     /// <returns>True if search should terminate</returns>
-    public delegate bool DTerminate(in ReadOnlyVBuffer<Float> x);
+    public delegate bool DTerminate(ref VBuffer<Float> x);
 
     /// <summary>
     /// Stochastic gradient descent with variations (minibatch, momentum, averaging).
@@ -146,7 +146,7 @@ namespace Microsoft.ML.Runtime.Numeric
         /// </summary>
         /// <param name="x">Point at which to evaluate</param>
         /// <param name="grad">Vector to be filled in with gradient</param>
-        public delegate void DStochasticGradient(in ReadOnlyVBuffer<Float> x, ref VBuffer<Float> grad);
+        public delegate void DStochasticGradient(ref VBuffer<Float> x, ref VBuffer<Float> grad);
 
         /// <summary>
         /// Minimize the function represented by <paramref name="f"/>.
@@ -192,7 +192,7 @@ namespace Microsoft.ML.Runtime.Numeric
                 Float scale = (1 - _momentum) / _batchSize;
                 for (int i = 0; i < _batchSize; ++i)
                 {
-                    f(x, ref grad);
+                    f(ref x, ref grad);
                     VectorUtils.AddMult(grad, scale, ref step);
                 }
 
@@ -203,7 +203,7 @@ namespace Microsoft.ML.Runtime.Numeric
                     VectorUtils.AddMult(step, -stepSize, ref x);
                     VectorUtils.AddMult(x, (Float)1 / (n + 1), ref avg);
 
-                    if ((n > 0 && TerminateTester.ShouldTerminate(ref avg, ref prev)) || _terminate(avg))
+                    if ((n > 0 && TerminateTester.ShouldTerminate(ref avg, ref prev)) || _terminate(ref avg))
                     {
                         result = avg;
                         return;
@@ -213,7 +213,7 @@ namespace Microsoft.ML.Runtime.Numeric
                 {
                     Utils.Swap(ref x, ref prev);
                     VectorUtils.AddMult(ref step, -stepSize, ref prev, ref x);
-                    if ((n > 0 && TerminateTester.ShouldTerminate(ref x, ref prev)) || _terminate(x))
+                    if ((n > 0 && TerminateTester.ShouldTerminate(ref x, ref prev)) || _terminate(ref x))
                     {
                         result = x;
                         return;
@@ -309,7 +309,7 @@ namespace Microsoft.ML.Runtime.Numeric
                 initial.CopyTo(ref _point);
                 _func = function;
                 // REVIEW: plumb the IProgressChannelProvider through.
-                _value = _func(_point, ref _grad, null);
+                _value = _func(ref _point, ref _grad, null);
                 VectorUtils.ScaleInto(_grad, -1, ref _dir);
 
                 _useCG = useCG;
@@ -318,7 +318,7 @@ namespace Microsoft.ML.Runtime.Numeric
             public Float Eval(Float step, out Float deriv)
             {
                 VectorUtils.AddMultInto(_point, step, _dir, ref _newPoint);
-                _newValue = _func(_newPoint, ref _newGrad, null);
+                _newValue = _func(ref _newPoint, ref _newGrad, null);
                 deriv = VectorUtils.DotProduct(_dir, _newGrad);
                 return _newValue;
             }
@@ -361,7 +361,7 @@ namespace Microsoft.ML.Runtime.Numeric
                 Float step = LineSearch.Minimize(lineFunc.Eval, lineFunc.Value, lineFunc.Deriv);
                 var newPoint = lineFunc.NewPoint;
                 bool terminateNow = n > 0 && TerminateTester.ShouldTerminate(ref newPoint, ref prev);
-                if (terminateNow || Terminate(newPoint))
+                if (terminateNow || Terminate(ref newPoint))
                     break;
                 newPoint.CopyTo(ref prev);
                 lineFunc.ChangeDir();

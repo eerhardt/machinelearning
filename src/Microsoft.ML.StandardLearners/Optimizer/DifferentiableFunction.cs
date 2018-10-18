@@ -19,7 +19,7 @@ namespace Microsoft.ML.Runtime.Numeric
     /// <param name="gradient">The gradient vector, which must be filled in (its initial contents are undefined)</param>
     /// <param name="progress">The progress channel provider that can be used to report calculation progress. Can be null.</param>
     /// <returns>The value of the function</returns>
-    public delegate Float DifferentiableFunction(in ReadOnlyVBuffer<Float> input, ref VBuffer<Float> gradient, IProgressChannelProvider progress);
+    public delegate Float DifferentiableFunction(ref VBuffer<Float> input, ref VBuffer<Float> gradient, IProgressChannelProvider progress);
 
     /// <summary>
     /// A delegate for indexed sets of functions with gradients.
@@ -169,10 +169,10 @@ namespace Microsoft.ML.Runtime.Numeric
         /// <param name="f">function to test</param>
         /// <param name="x">point at which to test</param>
         /// <returns>maximum normalized difference between analytic and numeric directional derivative over multiple tests</returns>
-        public static Float Test(DifferentiableFunction f, in ReadOnlyVBuffer<Float> x)
+        public static Float Test(DifferentiableFunction f, ref VBuffer<Float> x)
         {
             // REVIEW: Delete this method?
-            return Test(f, in x, false);
+            return Test(f, ref x, false);
         }
 
         /// <summary>
@@ -182,14 +182,14 @@ namespace Microsoft.ML.Runtime.Numeric
         /// <param name="x">point at which to test</param>
         /// <param name="quiet">If false, outputs detailed info.</param>
         /// <returns>maximum normalized difference between analytic and numeric directional derivative over multiple tests</returns>
-        public static Float Test(DifferentiableFunction f, in ReadOnlyVBuffer<Float> x, bool quiet)
+        public static Float Test(DifferentiableFunction f, ref VBuffer<Float> x, bool quiet)
         {
             // REVIEW: Delete this method?
             VBuffer<Float> grad = default(VBuffer<Float>);
             VBuffer<Float> newGrad = default(VBuffer<Float>);
             VBuffer<Float> newX = default(VBuffer<Float>);
             Float normX = VectorUtils.Norm(x);
-            f(in x, ref grad, null);
+            f(ref x, ref grad, null);
 
             if (!quiet)
                 Console.WriteLine(Header);
@@ -218,10 +218,10 @@ namespace Microsoft.ML.Runtime.Numeric
                 VectorUtils.ScaleBy(ref dir, 1 / norm);
 
                 VectorUtils.AddMultInto(x, Eps, dir, ref newX);
-                Float rVal = f(newX, ref newGrad, null);
+                Float rVal = f(ref newX, ref newGrad, null);
 
                 VectorUtils.AddMultInto(x, -Eps, dir, ref newX);
-                Float lVal = f(newX, ref newGrad, null);
+                Float lVal = f(ref newX, ref newGrad, null);
 
                 Float dirDeriv = VectorUtils.DotProduct(grad, dir);
                 Float numDeriv = (rVal - lVal) / (2 * Eps);
@@ -247,13 +247,13 @@ namespace Microsoft.ML.Runtime.Numeric
         /// </summary>
         /// <param name="f"></param>
         /// <param name="x"></param>
-        public static void TestAllCoords(DifferentiableFunction f, in ReadOnlyVBuffer<Float> x)
+        public static void TestAllCoords(DifferentiableFunction f, ref VBuffer<Float> x)
         {
             // REVIEW: Delete this method?
             VBuffer<Float> grad = default(VBuffer<Float>);
             VBuffer<Float> newGrad = default(VBuffer<Float>);
             VBuffer<Float> newX = default(VBuffer<Float>);
-            Float val = f(in x, ref grad, null);
+            Float val = f(ref x, ref grad, null);
             Float normX = VectorUtils.Norm(x);
 
             Console.WriteLine(Header);
@@ -266,10 +266,10 @@ namespace Microsoft.ML.Runtime.Numeric
                 dir.Values[0] = n;
                 ReadOnlyVBuffer<float> readOnlyDir = dir;
                 VectorUtils.AddMultInto(x, Eps, readOnlyDir, ref newX);
-                Float rVal = f(newX, ref newGrad, null);
+                Float rVal = f(ref newX, ref newGrad, null);
 
                 VectorUtils.AddMultInto(x, -Eps, readOnlyDir, ref newX);
-                Float lVal = f(newX, ref newGrad, null);
+                Float lVal = f(ref newX, ref newGrad, null);
 
                 Float dirDeriv = VectorUtils.DotProduct(grad, readOnlyDir);
                 Float numDeriv = (rVal - lVal) / (2 * Eps);
@@ -287,13 +287,13 @@ namespace Microsoft.ML.Runtime.Numeric
         /// <param name="f">Function to test</param>
         /// <param name="x">Point at which to test</param>
         /// <param name="coords">List of coordinates to test</param>
-        public static void TestCoords(DifferentiableFunction f, in ReadOnlyVBuffer<Float> x, IList<int> coords)
+        public static void TestCoords(DifferentiableFunction f, ref VBuffer<Float> x, IList<int> coords)
         {
             // REVIEW: Delete this method?
             VBuffer<Float> grad = default(VBuffer<Float>);
             VBuffer<Float> newGrad = default(VBuffer<Float>);
             VBuffer<Float> newX = default(VBuffer<Float>);
-            Float val = f(in x, ref grad, null);
+            Float val = f(ref x, ref grad, null);
             Float normX = VectorUtils.Norm(x);
 
             Console.WriteLine(Header);
@@ -306,10 +306,10 @@ namespace Microsoft.ML.Runtime.Numeric
                 dir.Values[0] = n;
                 ReadOnlyVBuffer<float> readOnlyDir = dir;
                 VectorUtils.AddMultInto(x, Eps, in readOnlyDir, ref newX);
-                Float rVal = f(newX, ref newGrad, null);
+                Float rVal = f(ref newX, ref newGrad, null);
 
                 VectorUtils.AddMultInto(x, -Eps, in readOnlyDir, ref newX);
-                Float lVal = f(newX, ref newGrad, null);
+                Float lVal = f(ref newX, ref newGrad, null);
 
                 Float dirDeriv = VectorUtils.DotProduct(grad, in readOnlyDir);
                 Float numDeriv = (rVal - lVal) / (2 * Eps);
@@ -330,21 +330,21 @@ namespace Microsoft.ML.Runtime.Numeric
         /// <param name="newGrad">This is a reusable working buffer for intermediate calculations</param>
         /// <param name="newX">This is a reusable working buffer for intermediate calculations</param>
         /// <returns>Normalized difference between analytic and numeric directional derivative</returns>
-        public static Float Test(DifferentiableFunction f, in ReadOnlyVBuffer<Float> x, in ReadOnlyVBuffer<Float> dir, bool quiet,
+        public static Float Test(DifferentiableFunction f, ref VBuffer<Float> x, in ReadOnlyVBuffer<Float> dir, bool quiet,
             ref VBuffer<Float> newGrad, ref VBuffer<Float> newX)
         {
             Float normDir = VectorUtils.Norm(dir);
 
-            Float val = f(in x, ref newGrad, null);
+            Float val = f(ref x, ref newGrad, null);
             Float dirDeriv = VectorUtils.DotProduct(newGrad, in dir);
 
             Float scaledEps = Eps / normDir;
 
             VectorUtils.AddMultInto(x, scaledEps, in dir, ref newX);
-            Float rVal = f(newX, ref newGrad, null);
+            Float rVal = f(ref newX, ref newGrad, null);
 
             VectorUtils.AddMultInto(x, -scaledEps, in dir, ref newX);
-            Float lVal = f(newX, ref newGrad, null);
+            Float lVal = f(ref newX, ref newGrad, null);
 
             Float numDeriv = (rVal - lVal) / (2 * scaledEps);
 

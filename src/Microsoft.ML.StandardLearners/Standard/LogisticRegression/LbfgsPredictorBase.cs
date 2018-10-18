@@ -273,11 +273,11 @@ namespace Microsoft.ML.Runtime.Learners
             int numExamples = 0;
             var oldWeights = VBufferUtils.CreateEmpty<float>(BiasCount + WeightCount);
             DTerminate terminateSgd =
-                (in ReadOnlyVBuffer<float> x) =>
+                (ref VBuffer<float> x) =>
                 {
                     if (++numExamples % 1000 != 0)
                         return false;
-                    VectorUtils.AddMult(in x, -1, ref oldWeights);
+                    VectorUtils.AddMult(x, -1, ref oldWeights);
                     float normDiff = VectorUtils.Norm(oldWeights);
                     x.CopyTo(ref oldWeights);
                     // #if OLD_TRACING // REVIEW: How should this be ported?
@@ -298,7 +298,7 @@ namespace Microsoft.ML.Runtime.Learners
                 float[] scratch = null;
 
                 SgdOptimizer.DStochasticGradient lossSgd =
-                    (in ReadOnlyVBuffer<float> x, ref VBuffer<float> grad) =>
+                    (ref VBuffer<float> x, ref VBuffer<float> grad) =>
                     {
                         // Zero out the gradient by sparsifying.
                         grad = new VBuffer<float>(grad.Length, 0, grad.Values, grad.Indices);
@@ -312,7 +312,7 @@ namespace Microsoft.ML.Runtime.Learners
                             if (!cursor.MoveNext())
                                 return;
                         }
-                        AccumulateOneGradient(cursor.Features, cursor.Label, cursor.Weight, in x, ref grad, ref scratch);
+                        AccumulateOneGradient(cursor.Features, cursor.Label, cursor.Weight, x, ref grad, ref scratch);
                     };
 
                 VBuffer<float> sgdWeights;
@@ -556,7 +556,7 @@ namespace Microsoft.ML.Runtime.Learners
         /// <summary>
         /// The gradient being used by the optimizer
         /// </summary>
-        protected virtual float DifferentiableFunction(in ReadOnlyVBuffer<float> x, ref VBuffer<float> gradient,
+        protected virtual float DifferentiableFunction(ref VBuffer<float> x, ref VBuffer<float> gradient,
             IProgressChannelProvider progress)
         {
             Contracts.Assert((_numChunks == 0) != (_data == null));
@@ -567,22 +567,18 @@ namespace Microsoft.ML.Runtime.Learners
             Contracts.AssertValueOrNull(progress);
 
             float scaleFactor = 1 / (float)WeightSum;
-            ReadOnlyVBuffer<float> xDense = default;
+            VBuffer<float> xDense = default(VBuffer<float>);
             if (x.IsDense)
                 xDense = x;
             else
-            {
-                VBuffer<float> xDenseTemp = default;
-                x.CopyToDense(ref xDenseTemp);
-                xDense = xDenseTemp;
-            }
+                x.CopyToDense(ref xDense);
 
             IProgressChannel pch = progress != null ? progress.StartProgressChannel("Gradient") : null;
             float loss;
             using (pch)
             {
                 loss = _data == null
-                    ? DifferentiableFunctionMultithreaded(in xDense, ref gradient, pch)
+                    ? DifferentiableFunctionMultithreaded(ref xDense, ref gradient, pch)
                     : DifferentiableFunctionStream(_cursorFactory, xDense, ref gradient, pch);
             }
             float regLoss = 0;
@@ -616,7 +612,7 @@ namespace Microsoft.ML.Runtime.Learners
         /// REVIEW: consider getting rid of multithread-targeted members
         /// Using TPL, the distinction between Multithreaded and Sequential implementations is unnecessary
         /// </remarks>
-        protected virtual float DifferentiableFunctionMultithreaded(in ReadOnlyVBuffer<float> xDense, ref VBuffer<float> gradient, IProgressChannel pch)
+        protected virtual float DifferentiableFunctionMultithreaded(ref VBuffer<float> xDense, ref VBuffer<float> gradient, IProgressChannel pch)
         {
             Contracts.Assert(_data == null);
             Contracts.Assert(_cursorFactory == null);

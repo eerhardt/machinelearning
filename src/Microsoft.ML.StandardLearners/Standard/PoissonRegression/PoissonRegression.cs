@@ -108,9 +108,9 @@ namespace Microsoft.ML.Runtime.Learners
         }
 
         // Make sure _lossnormalizer is added only once
-        protected override float DifferentiableFunction(in ReadOnlyVBuffer<float> x, ref VBuffer<float> gradient, IProgressChannelProvider progress)
+        protected override float DifferentiableFunction(ref VBuffer<float> x, ref VBuffer<float> gradient, IProgressChannelProvider progress)
         {
-            return base.DifferentiableFunction(in x, ref gradient, progress) + (float)(_lossNormalizer / NumGoodRows);
+            return base.DifferentiableFunction(ref x, ref gradient, progress) + (float)(_lossNormalizer / NumGoodRows);
         }
 
         // Poisson: p(y;lambda) = lambda^y * exp(-lambda) / y!

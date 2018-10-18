@@ -96,7 +96,7 @@ namespace Microsoft.ML.Runtime.Numeric
             /// <summary>
             /// This is the original differentiable function with the injected L1 term.
             /// </summary>
-            private Float EvalCore(in ReadOnlyVBuffer<Float> input, ref VBuffer<Float> gradient, IProgressChannelProvider progress)
+            private Float EvalCore(ref VBuffer<Float> input, ref VBuffer<Float> gradient, IProgressChannelProvider progress)
             {
                 // REVIEW: Leverage Vector methods that use SSE.
                 Float res = 0;
@@ -104,26 +104,26 @@ namespace Microsoft.ML.Runtime.Numeric
                 if (!EnforceNonNegativity)
                 {
                     if (_biasCount > 0)
-                        VBufferUtils.ForEachDefined(in input,
+                        VBufferUtils.ForEachDefined(input,
                             (int ind, float value) => { if (ind >= _biasCount) res += Math.Abs(value); });
                     else
-                        VBufferUtils.ForEachDefined(in input, (int ind, float value) => res += Math.Abs(value));
+                        VBufferUtils.ForEachDefined(input, (int ind, float value) => res += Math.Abs(value));
                 }
                 else
                 {
                     if (_biasCount > 0)
-                        VBufferUtils.ForEachDefined(in input,
+                        VBufferUtils.ForEachDefined(input,
                             (int ind, float value) => { if (ind >= _biasCount) res += value; });
                     else
-                        VBufferUtils.ForEachDefined(in input, (int ind, float value) => res += value);
+                        VBufferUtils.ForEachDefined(input, (int ind, float value) => res += value);
                 }
-                res = _l1weight * res + _function(in input, ref gradient, progress);
+                res = _l1weight * res + _function(ref input, ref gradient, progress);
                 return res;
             }
 
-            public override Float Eval(in ReadOnlyVBuffer<Float> input, ref VBuffer<Float> gradient)
+            public override Float Eval(ref VBuffer<Float> input, ref VBuffer<Float> gradient)
             {
-                return EvalCore(in input, ref gradient, ProgressProvider);
+                return EvalCore(ref input, ref gradient, ProgressProvider);
             }
 
             private void MakeSteepestDescDir()
@@ -226,7 +226,7 @@ namespace Microsoft.ML.Runtime.Numeric
                 int i = 0;
                 while (true)
                 {
-                    Value = Eval(_newX, ref _newGrad);
+                    Value = Eval(ref _newX, ref _newGrad);
                     GradientCalculations++;
 
                     if (Value <= LastValue - Gamma * unnormCos)
