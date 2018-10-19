@@ -829,9 +829,9 @@ namespace Microsoft.ML.Runtime.Learners
                                 }
 
                                 if (features.IsDense)
-                                    CpuMathUtils.SdcaL1UpdateDense(primalUpdate, features.Count, features.Values, l1Threshold, l1IntermediateWeights[0].Values, weights[0].Values);
+                                    CpuMathUtils.SdcaL1UpdateDense(primalUpdate, features.Count, features.GetValues(), l1Threshold, l1IntermediateWeights[0].Values, weights[0].Values);
                                 else if (features.Count > 0)
-                                    CpuMathUtils.SdcaL1UpdateSparse(primalUpdate, features.Count, features.Values, features.Indices, l1Threshold, l1IntermediateWeights[0].Values, weights[0].Values);
+                                    CpuMathUtils.SdcaL1UpdateSparse(primalUpdate, features.Count, features.GetValues(), features.GetIndices(), l1Threshold, l1IntermediateWeights[0].Values, weights[0].Values);
                             }
 
                             break;
@@ -954,7 +954,7 @@ namespace Microsoft.ML.Runtime.Learners
             var dualityGap = metrics[(int)MetricKind.DualityGap] = newLoss - newDualLoss;
             metrics[(int)MetricKind.BiasUnreg] = biasUnreg[0];
             metrics[(int)MetricKind.BiasReg] = biasReg[0];
-            metrics[(int)MetricKind.L1Sparsity] = Args.L1Threshold == 0 ? 1 : (Double)firstWeights.Values.Count(w => w != 0) / weights.Length;
+            metrics[(int)MetricKind.L1Sparsity] = Args.L1Threshold == 0 ? 1 : (Double)firstWeights.GetValues().Count(w => w != 0) / weights.Length;
 
             bool converged = dualityGap / newLoss < Args.ConvergenceTolerance;
 

@@ -47,13 +47,13 @@ namespace Microsoft.ML.Runtime.Numeric
             if (a.IsDense)
             {
                 if (b.IsDense)
-                    return CpuMathUtils.DotProductDense(a.Values, b.Values, a.Length);
-                return CpuMathUtils.DotProductSparse(a.Values, b.Values, b.Indices, b.Count);
+                    return CpuMathUtils.DotProductDense(a.GetValues(), b.GetValues(), a.Length);
+                return CpuMathUtils.DotProductSparse(a.GetValues(), b.GetValues(), b.GetIndices(), b.Count);
             }
 
             if (b.IsDense)
-                return CpuMathUtils.DotProductSparse(b.Values, a.Values, a.Indices, a.Count);
-            return DotProductSparse(a.Values, a.Indices, 0, a.Count, b.Values, b.Indices, 0, b.Count);
+                return CpuMathUtils.DotProductSparse(b.GetValues(), a.GetValues(), a.GetIndices(), a.Count);
+            return DotProductSparse(a.GetValues(), a.GetIndices(), 0, a.Count, b.GetValues(), b.GetIndices(), 0, b.Count);
         }
 
         /// <summary>
@@ -159,27 +159,21 @@ namespace Microsoft.ML.Runtime.Numeric
             Contracts.Check(a.Length == dst.Length, "Vectors must have the same dimensionality.");
 
             if (a.IsDense && dst.IsDense)
-                CpuMathUtils.MulElementWise(a.Values, dst.Values, dst.Values, a.Length);
+                CpuMathUtils.MulElementWise(a.GetValues(), dst.Values, dst.Values, a.Length);
             else
                 VBufferUtils.ApplyWithEitherDefined(in a, ref dst, (int ind, Float v1, ref Float v2) => { v2 *= v1; });
         }
 
-        private static Float L2DistSquaredSparse(Float[] valuesA, int[] indicesA, int countA, Float[] valuesB, int[] indicesB, int countB, int length)
+        private static Float L2DistSquaredSparse(ReadOnlySpan<Float> valuesA, ReadOnlySpan<int> indicesA, ReadOnlySpan<Float> valuesB, ReadOnlySpan<int> indicesB)
         {
-            Contracts.AssertValueOrNull(valuesA);
-            Contracts.AssertValueOrNull(indicesA);
-            Contracts.AssertValueOrNull(valuesB);
-            Contracts.AssertValueOrNull(indicesB);
-            Contracts.Assert(0 <= countA && countA <= Utils.Size(indicesA));
-            Contracts.Assert(0 <= countB && countB <= Utils.Size(indicesB));
-            Contracts.Assert(countA <= Utils.Size(valuesA));
-            Contracts.Assert(countB <= Utils.Size(valuesB));
+            Contracts.Assert(valuesA.Length == indicesA.Length);
+            Contracts.Assert(valuesB.Length == indicesB.Length);
 
             Float res = 0;
 
             int ia = 0;
             int ib = 0;
-            while (ia < countA && ib < countB)
+            while (ia < indicesA.Length && ib < indicesB.Length)
             {
                 int diff = indicesA[ia] - indicesB[ib];
                 Float d;
@@ -202,14 +196,14 @@ namespace Microsoft.ML.Runtime.Numeric
                 res += d * d;
             }
 
-            while (ia < countA)
+            while (ia < indicesA.Length)
             {
                 var d = valuesA[ia];
                 res += d * d;
                 ia++;
             }
 
-            while (ib < countB)
+            while (ib < indicesB.Length)
             {
                 var d = valuesB[ib];
                 res += d * d;
@@ -219,30 +213,21 @@ namespace Microsoft.ML.Runtime.Numeric
             return res;
         }
 
-        private static Float L2DistSquaredHalfSparse(Float[] valuesA, int lengthA, Float[] valuesB, int[] indicesB, int countB)
+        private static Float L2DistSquaredHalfSparse(ReadOnlySpan<Float> valuesA, ReadOnlySpan<Float> valuesB, ReadOnlySpan<int> indicesB)
         {
-            Contracts.AssertValueOrNull(valuesA);
-            Contracts.AssertValueOrNull(valuesB);
-            Contracts.AssertValueOrNull(indicesB);
-            Contracts.Assert(0 <= lengthA && lengthA <= Utils.Size(valuesA));
-            Contracts.Assert(0 <= countB && countB <= Utils.Size(indicesB));
-            Contracts.Assert(countB <= Utils.Size(valuesB));
-
-            var normA = CpuMathUtils.SumSq(valuesA.AsSpan(0, lengthA));
-            if (countB == 0)
+            var normA = CpuMathUtils.SumSq(valuesA);
+            if (valuesB.Length == 0)
                 return normA;
-            var normB = CpuMathUtils.SumSq(valuesB.AsSpan(0, countB));
-            var dotP = CpuMathUtils.DotProductSparse(valuesA, valuesB, indicesB, countB);
+            var normB = CpuMathUtils.SumSq(valuesB);
+            var dotP = CpuMathUtils.DotProductSparse(valuesA, valuesB, indicesB, valuesB.Length);
             var res = normA + normB - 2 * dotP;
             return res < 0 ? 0 : res;
         }
 
-        private static Float L2DiffSquaredDense(Float[] valuesA, Float[] valuesB, int length)
+        private static Float L2DiffSquaredDense(ReadOnlySpan<Float> valuesA, ReadOnlySpan<Float> valuesB, int length)
         {
-            Contracts.AssertValueOrNull(valuesA);
-            Contracts.AssertValueOrNull(valuesB);
-            Contracts.Assert(0 <= length && length <= Utils.Size(valuesA));
-            Contracts.Assert(0 <= length && length <= Utils.Size(valuesB));
+            Contracts.Assert(0 <= length && length <= valuesA.Length);
+            Contracts.Assert(0 <= length && length <= valuesB.Length);
 
             if (length == 0)
                 return 0;
@@ -267,27 +252,31 @@ namespace Microsoft.ML.Runtime.Numeric
             if (a.IsDense)
             {
                 if (b.IsDense)
-                    return CpuMathUtils.DotProductDense(a.Values.Slice(offset), b.Values, b.Length);
-                return CpuMathUtils.DotProductSparse(a.Values.Slice(offset), b.Values, b.Indices, b.Count);
+                    return CpuMathUtils.DotProductDense(a.GetValues().Slice(offset), b.GetValues(), b.Length);
+                return CpuMathUtils.DotProductSparse(a.GetValues().Slice(offset), b.GetValues(), b.GetIndices(), b.Count);
             }
             else
             {
                 Float result = 0;
-                int aMin = Utils.FindIndexSorted(a.Indices, 0, a.Count, offset);
-                int aLim = Utils.FindIndexSorted(a.Indices, 0, a.Count, offset + b.Length);
+                var aValues = a.GetValues();
+                var aIndices = a.GetIndices();
+                var bValues = b.GetValues();
+                var bIndices = b.GetIndices();
+                int aMin = Utils.FindIndexSorted(aIndices, 0, a.Count, offset);
+                int aLim = Utils.FindIndexSorted(aIndices, 0, a.Count, offset + b.Length);
                 if (b.IsDense)
                 {
                     for (int iA = aMin; iA < aLim; ++iA)
-                        result += a.Values[iA] * b.Values[a.Indices[iA] - offset];
+                        result += aValues[iA] * bValues[aIndices[iA] - offset];
                     return result;
                 }
                 for (int iA = aMin, iB = 0; iA < aLim && iB < b.Count; )
                 {
-                    int aIndex = a.Indices[iA];
-                    int bIndex = b.Indices[iB];
+                    int aIndex = aIndices[iA];
+                    int bIndex = bIndices[iB];
                     int comp = (aIndex - offset) - bIndex;
                     if (comp == 0)
-                        result += a.Values[iA++] * b.Values[iB++];
+                        result += aValues[iA++] * bValues[iB++];
                     else if (comp < 0)
                         iA++;
                     else
@@ -402,11 +391,31 @@ namespace Microsoft.ML.Runtime.Numeric
             {
                 if (b.IsDense)
                     return L2DiffSquaredDense(a.Values, b.Values, b.Length);
-                return L2DistSquaredHalfSparse(a.Values, a.Length, b.Values, b.Indices, b.Count);
+                return L2DistSquaredHalfSparse(a.Values.AsSpan(0, a.Length), b.Values.AsSpan(0, b.Count), b.Indices.AsSpan(0, b.Count));
             }
             if (b.IsDense)
-                return L2DistSquaredHalfSparse(b.Values, b.Length, a.Values, a.Indices, a.Count);
-            return L2DistSquaredSparse(a.Values, a.Indices, a.Count, b.Values, b.Indices, b.Count, a.Length);
+                return L2DistSquaredHalfSparse(b.Values.AsSpan(0, b.Length), a.Values.AsSpan(0, a.Count), a.Indices.AsSpan(0, a.Count));
+            return L2DistSquaredSparse(a.Values.AsSpan(0, a.Count), a.Indices.AsSpan(0, a.Count), b.Values.AsSpan(0, b.Count), b.Indices.AsSpan(0, b.Count));
+        }
+
+        /// <summary>
+        /// Computes the Euclidean distance squared between two VBuffers
+        /// </summary>
+        /// <param name="a">one VBuffer</param>
+        /// <param name="b">another VBuffer</param>
+        /// <returns>Distance from a to b</returns>
+        public static Float L2DistSquared(in ReadOnlyVBuffer<Float> a, in ReadOnlyVBuffer<Float> b)
+        {
+            Contracts.Check(a.Length == b.Length, "Vectors must have the same dimensionality.");
+            if (a.IsDense)
+            {
+                if (b.IsDense)
+                    return L2DiffSquaredDense(a.GetValues(), b.GetValues(), b.Length);
+                return L2DistSquaredHalfSparse(a.GetValues(), b.GetValues(), b.GetIndices());
+            }
+            if (b.IsDense)
+                return L2DistSquaredHalfSparse(b.GetValues(), a.GetValues(), a.GetIndices());
+            return L2DistSquaredSparse(a.GetValues(), a.GetIndices(), b.GetValues(), b.GetIndices());
         }
 
         /// <summary>
@@ -421,7 +430,7 @@ namespace Microsoft.ML.Runtime.Numeric
             Contracts.Check(Utils.Size(a) == b.Length, "Vectors must have the same dimensionality.");
             if (b.IsDense)
                 return L2DiffSquaredDense(a, b.Values, b.Length);
-            return L2DistSquaredHalfSparse(a, a.Length, b.Values, b.Indices, b.Count);
+            return L2DistSquaredHalfSparse(a.AsSpan(0, a.Length), b.Values.AsSpan(0, b.Count), b.Indices.AsSpan(0, b.Count));
         }
 
         /// <summary>
@@ -451,12 +460,14 @@ namespace Microsoft.ML.Runtime.Numeric
             if (src.Count == 0 || c == 0)
                 return;
 
+            var srcValues = src.GetValues();
             if (src.IsDense)
-                CpuMathUtils.AddScale(c, src.Values, dst, src.Count);
+                CpuMathUtils.AddScale(c, srcValues, dst, src.Count);
             else
             {
+                var srcIndices = src.GetIndices();
                 for (int i = 0; i < src.Count; i++)
-                    dst[src.Indices[i]] += c * src.Values[i];
+                    dst[srcIndices[i]] += c * srcValues[i];
             }
         }
 

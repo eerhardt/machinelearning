@@ -338,7 +338,7 @@ namespace Microsoft.ML.Runtime.Learners
         /// </summary>
         protected virtual void ProcessDataInstance(IChannel ch, in ReadOnlyVBuffer<Float> feat, Float label, Float weight)
         {
-            Contracts.Assert(FloatUtils.IsFinite(feat.Values.Slice(0, feat.Count)));
+            Contracts.Assert(FloatUtils.IsFinite(feat.GetValues()));
 
             ++NumIterExamples;
 #if OLD_TRACING // REVIEW: How should this be ported?

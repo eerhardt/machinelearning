@@ -22,7 +22,7 @@ namespace Microsoft.ML.Runtime.Numeric
         {
             if (a.Count == 0)
                 return 0;
-            return CpuMathUtils.SumSq(a.Values.Slice(0, a.Count));
+            return CpuMathUtils.SumSq(a.GetValues());
         }
 
         /// <summary>
@@ -50,7 +50,7 @@ namespace Microsoft.ML.Runtime.Numeric
         {
             if (a.Count == 0)
                 return 0;
-            return CpuMathUtils.SumAbs(a.Values.Slice(0, a.Count));
+            return CpuMathUtils.SumAbs(a.GetValues());
         }
 
         /// <summary>
@@ -61,7 +61,7 @@ namespace Microsoft.ML.Runtime.Numeric
         {
             if (a.Count == 0)
                 return 0;
-            return CpuMathUtils.MaxAbs(a.Values.Slice(0, a.Count));
+            return CpuMathUtils.MaxAbs(a.GetValues());
         }
 
         /// <summary>
@@ -71,7 +71,7 @@ namespace Microsoft.ML.Runtime.Numeric
         {
             if (a.Count == 0)
                 return 0;
-            return CpuMathUtils.Sum(a.Values.Slice(0, a.Count));
+            return CpuMathUtils.Sum(a.GetValues());
         }
 
         /// <summary>
@@ -114,17 +114,17 @@ namespace Microsoft.ML.Runtime.Numeric
                 if (c == 0)
                     Array.Clear(dstValues, 0, length);
                 else
-                    CpuMathUtils.Scale(c, src.Values, dstValues, length);
+                    CpuMathUtils.Scale(c, src.GetValues(), dstValues, length);
                 dst = new VBuffer<Float>(length, dstValues, dst.Indices);
             }
             else
             {
                 var dstIndices = Utils.Size(dst.Indices) >= count ? dst.Indices : new int[count];
-                src.Indices.CopyTo(dstIndices);
+                src.GetIndices().CopyTo(dstIndices);
                 if (c == 0)
                     Array.Clear(dstValues, 0, count);
                 else
-                    CpuMathUtils.Scale(c, src.Values, dstValues, count);
+                    CpuMathUtils.Scale(c, src.GetValues(), dstValues, count);
                 dst = new VBuffer<Float>(length, count, dstValues, dstIndices);
             }
         }
@@ -142,9 +142,9 @@ namespace Microsoft.ML.Runtime.Numeric
             if (dst.IsDense)
             {
                 if (src.IsDense)
-                    CpuMathUtils.Add(src.Values, dst.Values, src.Length);
+                    CpuMathUtils.Add(src.GetValues(), dst.Values, src.Length);
                 else
-                    CpuMathUtils.Add(src.Values, src.Indices, dst.Values, src.Count);
+                    CpuMathUtils.Add(src.GetValues(), src.GetIndices(), dst.Values, src.Count);
                 return;
             }
             // REVIEW: Should we use SSE for any of these possibilities?
@@ -168,9 +168,9 @@ namespace Microsoft.ML.Runtime.Numeric
             if (dst.IsDense)
             {
                 if (src.IsDense)
-                    CpuMathUtils.AddScale(c, src.Values, dst.Values, src.Length);
+                    CpuMathUtils.AddScale(c, src.GetValues(), dst.Values, src.Length);
                 else
-                    CpuMathUtils.AddScale(c, src.Values, src.Indices, dst.Values, src.Count);
+                    CpuMathUtils.AddScale(c, src.GetValues(), src.GetIndices(), dst.Values, src.Count);
                 return;
             }
             // REVIEW: Should we use SSE for any of these possibilities?
@@ -239,9 +239,9 @@ namespace Microsoft.ML.Runtime.Numeric
             {
                 // This is by far the most common case.
                 if (src.IsDense)
-                    CpuMathUtils.AddScale(c, src.Values, dst.Values.AsSpan(offset), src.Count);
+                    CpuMathUtils.AddScale(c, src.GetValues(), dst.Values.AsSpan(offset), src.Count);
                 else
-                    CpuMathUtils.AddScale(c, src.Values, src.Indices, dst.Values.AsSpan(offset), src.Count);
+                    CpuMathUtils.AddScale(c, src.GetValues(), src.GetIndices(), dst.Values.AsSpan(offset), src.Count);
                 return;
             }
             // REVIEW: Perhaps implementing an ApplyInto with an offset would be more
@@ -260,9 +260,10 @@ namespace Microsoft.ML.Runtime.Numeric
             else
             {
                 gapCount = src.Count;
+                var srcIndices = src.GetIndices();
                 for (int iS = 0, iD = dMin; iS < src.Count && iD < dLim; )
                 {
-                    var comp = src.Indices[iS] - dst.Indices[iD] + offset;
+                    var comp = srcIndices[iS] - dst.Indices[iD] + offset;
                     if (comp < 0) // dst index is larger.
                         iS++;
                     else if (comp > 0) // src index is larger.
@@ -293,6 +294,7 @@ namespace Microsoft.ML.Runtime.Numeric
             // Now, fill in the stuff in this "gap." Both of these implementations work
             // backwards from the end, since they can potentially be working in place if
             // the EnsureSize calls did not actually result in a new array.
+            var srcValues = src.GetValues();
             if (src.IsDense)
             {
                 // dst is sparse, src is dense.
@@ -304,9 +306,9 @@ namespace Microsoft.ML.Runtime.Numeric
                     // iDD and iD are the points in where we are writing and reading from.
                     Contracts.Assert(iDD >= iD);
                     if (iD >= 0 && offset + iS == dst.Indices[iD]) // Collision.
-                        values[iDD] = dst.Values[iD--] + c * src.Values[iS];
+                        values[iDD] = dst.Values[iD--] + c * srcValues[iS];
                     else // Miss.
-                        values[iDD] = c * src.Values[iS];
+                        values[iDD] = c * srcValues[iS];
                     indices[iDD] = offset + iS;
                 }
             }
@@ -315,7 +317,8 @@ namespace Microsoft.ML.Runtime.Numeric
                 // Both dst and src are sparse.
                 int iD = dLim - 1;
                 int iS = src.Count - 1;
-                int sIndex = iS < 0 ? -1 : src.Indices[iS];
+                var srcIndices = src.GetIndices();
+                int sIndex = iS < 0 ? -1 : srcIndices[iS];
                 int dIndex = iD < 0 ? -1 : dst.Indices[iD] - offset;
 
                 for (int iDD = dLim + gapCount; --iDD >= dMin; )
@@ -325,8 +328,8 @@ namespace Microsoft.ML.Runtime.Numeric
                     if (comp == 0) // Collision on both.
                     {
                         indices[iDD] = dst.Indices[iD];
-                        values[iDD] = dst.Values[iD--] + c * src.Values[iS--];
-                        sIndex = iS < 0 ? -1 : src.Indices[iS];
+                        values[iDD] = dst.Values[iD--] + c * srcValues[iS--];
+                        sIndex = iS < 0 ? -1 : srcIndices[iS];
                         dIndex = iD < 0 ? -1 : dst.Indices[iD] - offset;
                     }
                     else if (comp < 0) // Collision on dst.
@@ -338,8 +341,8 @@ namespace Microsoft.ML.Runtime.Numeric
                     else // Collision on src.
                     {
                         indices[iDD] = sIndex + offset;
-                        values[iDD] = c * src.Values[iS--];
-                        sIndex = iS < 0 ? -1 : src.Indices[iS];
+                        values[iDD] = c * srcValues[iS--];
+                        sIndex = iS < 0 ? -1 : srcIndices[iS];
                     }
                 }
             }

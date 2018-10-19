@@ -589,7 +589,7 @@ namespace Microsoft.ML.Runtime.Learners
             if (L2Weight > 0)
             {
                 Contracts.Assert(xDense.IsDense);
-                var values = xDense.Values;
+                var values = xDense.GetValues();
                 Double r = 0;
                 for (int i = BiasCount; i < values.Length; i++)
                 {

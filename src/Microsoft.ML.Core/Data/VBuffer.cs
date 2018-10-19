@@ -32,13 +32,13 @@ namespace Microsoft.ML.Runtime.Data
         /// <summary>
         /// The values. Only the first Count of these are valid.
         /// </summary>
-        public ReadOnlySpan<T> Values => _values;
+        public ReadOnlySpan<T> GetValues() => _values.AsSpan(0, Count);
 
         /// <summary>
         /// The indices. For a dense representation, Indices is not used. For a sparse representation
         /// it is parallel to values and specifies the logical indices for the corresponding values.
         /// </summary>
-        public ReadOnlySpan<int> Indices => _indices;
+        public ReadOnlySpan<int> GetIndices() => _indices.AsSpan(0, Count);
 
         /// <summary>
         /// Equivalent to Count == Length.
@@ -64,9 +64,9 @@ namespace Microsoft.ML.Runtime.Data
 
             int index;
             if (IsDense)
-                dst = Values[slot];
-            else if (Count > 0 && Utils.TryFindIndexSorted(Indices, 0, Count, slot, out index))
-                dst = Values[index];
+                dst = _values[slot];
+            else if (Count > 0 && Utils.TryFindIndexSorted(_indices, 0, Count, slot, out index))
+                dst = _values[index];
             else
                 dst = default;
         }
@@ -84,7 +84,7 @@ namespace Microsoft.ML.Runtime.Data
                 {
                     if (Utils.Size(values) < Length)
                         values = new T[Length];
-                    Values.Slice(0, Length).CopyTo(values);
+                    GetValues().CopyTo(values);
                 }
                 dst = new VBuffer<T>(Length, values, indices);
                 Contracts.Assert(dst.IsDense);
@@ -97,8 +97,8 @@ namespace Microsoft.ML.Runtime.Data
                         values = new T[Count];
                     if (Utils.Size(indices) < Count)
                         indices = new int[Count];
-                    Values.Slice(0, Count).CopyTo(values);
-                    Indices.Slice(0, Count).CopyTo(indices);
+                    GetValues().CopyTo(values);
+                    GetIndices().CopyTo(indices);
                 }
                 dst = new VBuffer<T>(Length, Count, values, indices);
             }
@@ -116,7 +116,7 @@ namespace Microsoft.ML.Runtime.Data
             if (!IsDense)
                 CopyTo(values);
             else if (Length > 0)
-                Values.Slice(0, Length).CopyTo(values);
+                GetValues().CopyTo(values);
             dst = new VBuffer<T>(Length, values, dst.Indices);
         }
 
@@ -136,7 +136,7 @@ namespace Microsoft.ML.Runtime.Data
                 return;
             if (IsDense)
             {
-                Values.Slice(0, Length).CopyTo(dst.AsSpan(ivDst));
+                GetValues().CopyTo(dst.AsSpan(ivDst));
                 return;
             }
 
@@ -147,14 +147,16 @@ namespace Microsoft.ML.Runtime.Data
             }
 
             int iv = 0;
+            var values = GetValues();
+            var indices = GetIndices();
             for (int islot = 0; islot < Count; islot++)
             {
-                int slot = Indices[islot];
+                int slot = indices[islot];
                 Contracts.Assert(slot >= iv);
                 while (iv < slot)
                     dst[ivDst + iv++] = defaultValue;
                 Contracts.Assert(iv == slot);
-                dst[ivDst + iv++] = Values[islot];
+                dst[ivDst + iv++] = values[islot];
             }
             while (iv < Length)
                 dst[ivDst + iv++] = defaultValue;

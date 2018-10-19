@@ -186,17 +186,6 @@ namespace Microsoft.ML.Runtime.Internal.Utilities
         /// In case of duplicates it returns the index of the first one.
         /// It guarantees that items before the returned index are &lt; value, while those at and after the returned index are &gt;= value.
         /// </summary>
-        public static int FindIndexSorted(this ReadOnlySpan<int> input, int value)
-        {
-            return FindIndexSorted(input, 0, input.Length, value);
-        }
-
-        /// <summary>
-        /// Assumes input is sorted and finds value using BinarySearch.
-        /// If value is not found, returns the logical index of 'value' in the sorted list i.e index of the first element greater than value.
-        /// In case of duplicates it returns the index of the first one.
-        /// It guarantees that items before the returned index are &lt; value, while those at and after the returned index are &gt;= value.
-        /// </summary>
         public static int FindIndexSorted(this IList<int> input, int value)
         {
             Contracts.AssertValue(input);
@@ -232,7 +221,7 @@ namespace Microsoft.ML.Runtime.Internal.Utilities
         /// <c>index</c> parameter, and returns whether that index is a valid index
         /// pointing to a value equal to the input parameter <c>value</c>.
         /// </summary>
-        public static bool TryFindIndexSorted(ReadOnlySpan<int> input, int min, int lim, int value, out int index)
+        public static bool TryFindIndexSorted(int[] input, int min, int lim, int value, out int index)
         {
             index = FindIndexSorted(input, min, lim, value);
             return index < lim && input[index] == value;
@@ -246,7 +235,29 @@ namespace Microsoft.ML.Runtime.Internal.Utilities
         /// </summary>
         public static int FindIndexSorted(int[] input, int min, int lim, int value)
         {
-            return FindIndexSorted(input.AsSpan(), min, lim, value);
+            Contracts.Assert(0 <= min & min <= lim & lim <= input.Length);
+
+            int minCur = min;
+            int limCur = lim;
+            while (minCur < limCur)
+            {
+                int mid = (int)(((uint)minCur + (uint)limCur) / 2);
+                Contracts.Assert(minCur <= mid & mid < limCur);
+
+                if (input[mid] >= value)
+                    limCur = mid;
+                else
+                    minCur = mid + 1;
+
+                Contracts.Assert(min <= minCur & minCur <= limCur & limCur <= lim);
+                Contracts.Assert(minCur == min || input[minCur - 1] < value);
+                Contracts.Assert(limCur == lim || input[limCur] >= value);
+            }
+            Contracts.Assert(min <= minCur & minCur == limCur & limCur <= lim);
+            Contracts.Assert(minCur == min || input[minCur - 1] < value);
+            Contracts.Assert(limCur == lim || input[limCur] >= value);
+
+            return minCur;
         }
 
         public static int FindIndexSorted(ReadOnlySpan<int> input, int min, int lim, int value)
@@ -1104,6 +1115,20 @@ namespace Microsoft.ML.Runtime.Internal.Utilities
                 }
             }
             return result;
+        }
+
+        public static bool All<TSource>(this ReadOnlySpan<TSource> source, Func<TSource, bool> predicate)
+        {
+            Contracts.CheckValue(predicate, nameof(predicate));
+
+            for (int i = 0; i < source.Length; i++)
+            {
+                if (!predicate(source[i]))
+                {
+                    return false;
+                }
+            }
+            return true;
         }
     }
 }

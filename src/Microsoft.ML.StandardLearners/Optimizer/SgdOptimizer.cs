@@ -190,9 +190,10 @@ namespace Microsoft.ML.Runtime.Numeric
                 }
 
                 Float scale = (1 - _momentum) / _batchSize;
+                ReadOnlyVBuffer<float> readOnlyX = x;
                 for (int i = 0; i < _batchSize; ++i)
                 {
-                    f(x, ref grad);
+                    f(in readOnlyX, ref grad);
                     VectorUtils.AddMult(grad, scale, ref step);
                 }
 
@@ -351,7 +352,7 @@ namespace Microsoft.ML.Runtime.Numeric
         /// <param name="result">Approximate minimum</param>
         public void Minimize(DifferentiableFunction function, in ReadOnlyVBuffer<Float> initial, ref VBuffer<Float> result)
         {
-            Contracts.Check(FloatUtils.IsFinite(initial.Values.Slice(0, initial.Count)), "The initial vector contains NaNs or infinite values.");
+            Contracts.Check(FloatUtils.IsFinite(initial.GetValues()), "The initial vector contains NaNs or infinite values.");
             LineFunc lineFunc = new LineFunc(function, in initial, UseCG);
             VBuffer<Float> prev = default(VBuffer<Float>);
             initial.CopyTo(ref prev);

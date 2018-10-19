@@ -634,7 +634,7 @@ namespace Microsoft.ML.Runtime.KMeans
         /// final round. After the final round, best cluster information will be ignored.
         /// </summary>
         private static void FindBestCluster(in ReadOnlyVBuffer<float> point, int pointRowIndex, SharedState initializationState,
-            int clusterCount, int clusterPrevCount, VBuffer<float>[] clusters, float[] clustersL2s, bool needRealDistanceSquared, bool needToStoreWeight,
+            int clusterCount, int clusterPrevCount, ReadOnlyVBuffer<float>[] clusters, float[] clustersL2s, bool needRealDistanceSquared, bool needToStoreWeight,
             out float minDistanceSquared, out int bestCluster)
         {
             Contracts.AssertValue(initializationState);
@@ -669,11 +669,11 @@ namespace Microsoft.ML.Runtime.KMeans
                     {
 #if DEBUG
                         // Lets check if our invariant actually holds
-                        Contracts.Assert(-2 * VectorUtils.DotProduct(in point, clusters[j]) + clustersL2s[j] > bestWeight);
+                        Contracts.Assert(-2 * VectorUtils.DotProduct(in point, in clusters[j]) + clustersL2s[j] > bestWeight);
 #endif
                         continue;
                     }
-                    float weight = -2 * VectorUtils.DotProduct(in point, clusters[j]) + clustersL2s[j];
+                    float weight = -2 * VectorUtils.DotProduct(in point, in clusters[j]) + clustersL2s[j];
                     if (bestWeight >= weight)
                     {
                         bestWeight = weight;
@@ -781,6 +781,8 @@ namespace Microsoft.ML.Runtime.KMeans
                 // The final chosen points, to be approximately clustered to determine starting
                 // centroids.
                 VBuffer<float>[] clusters = new VBuffer<float>[totalSamples];
+                ReadOnlyVBuffer<float>[] readOnlyClusters = null;
+
                 // L2s, kept for distance trick.
                 float[] clustersL2s = new float[totalSamples];
 
@@ -822,11 +824,13 @@ namespace Microsoft.ML.Runtime.KMeans
                     // far from our current total running set of instances as possible.
                     VBuffer<float>[] roundSamples = new VBuffer<float>[numSamplesPerRound];
 
+                    KMeansUtils.UpdateReadOnlyCache(clusters, ref readOnlyClusters);
+
                     KMeansUtils.WeightFunc weightFn = (in ReadOnlyVBuffer<float> point, int pointRowIndex) =>
                     {
                         float distanceSquared;
                         int discardBestCluster;
-                        FindBestCluster(point, pointRowIndex, initializationState, clusterCount, clusterPrevCount, clusters,
+                        FindBestCluster(point, pointRowIndex, initializationState, clusterCount, clusterPrevCount, readOnlyClusters,
                             clustersL2s, true, true, out distanceSquared, out discardBestCluster);
 
                         return (distanceSquared >= 0.0f) ? distanceSquared : 0.0f;
@@ -852,6 +856,9 @@ namespace Microsoft.ML.Runtime.KMeans
                             clusterCount++;
                         }
                         ch.Assert(clusterCount - clusterPrevCount <= numSamplesPerRound);
+
+                        KMeansUtils.UpdateReadOnlyCache(clusters, ref readOnlyClusters);
+
                         logicalExternalRounds++;
                         pCh.Checkpoint(logicalExternalRounds, numRounds + 2);
                     }
@@ -870,10 +877,10 @@ namespace Microsoft.ML.Runtime.KMeans
                     {
                         int bestCluster;
                         float discardBestWeight;
-                        FindBestCluster(point, pointRowIndex, initializationState, clusterCount, clusterPrevCount, clusters,
+                        FindBestCluster(point, pointRowIndex, initializationState, clusterCount, clusterPrevCount, readOnlyClusters,
                             clustersL2s, false, false, out discardBestWeight, out bestCluster);
 #if DEBUG
-                        int debugBestCluster = KMeansUtils.FindBestCluster(point, clusters, clustersL2s);
+                        int debugBestCluster = KMeansUtils.FindBestCluster(point, readOnlyClusters, clustersL2s);
                         ch.Assert(bestCluster == debugBestCluster);
 #endif
                         weights[bestCluster]++;
@@ -893,7 +900,7 @@ namespace Microsoft.ML.Runtime.KMeans
                 KMeansUtils.ParallelMapReduce<float[], float[]>(
                     numThreads, host, cursorFactory, (FeatureFloatVectorCursor cur) => -1,
                     (ref float[] weights) => weights = new float[totalSamples],
-                    (ref VBuffer<float> point, int discard, float[] weights, IRandom rand) => weights[KMeansUtils.FindBestCluster(point, clusters, clustersL2s)]++,
+                    (ref VBuffer<float> point, int discard, float[] weights, IRandom rand) => weights[KMeansUtils.FindBestCluster(point, readOnlyClusters, clustersL2s)]++,
                     (float[][] workStateWeights, IRandom rand, ref float[] weights) =>
                     {
                         weights = new float[totalSamples];
@@ -1282,16 +1289,16 @@ namespace Microsoft.ML.Runtime.KMeans
             }
 
 #if DEBUG
-            public void AssertValidYinYangBounds(int n, ref VBuffer<float> features, VBuffer<float>[] centroids)
+            public void AssertValidYinYangBounds(int n, in ReadOnlyVBuffer<float> features, ReadOnlyVBuffer<float>[] centroids)
             {
                 // Assert that the global filter is indeed doing the right thing
-                float bestDistance = MathUtils.Sqrt(VectorUtils.L2DistSquared(ref features, ref centroids[_bestCluster[n]]));
+                float bestDistance = MathUtils.Sqrt(VectorUtils.L2DistSquared(in features, in centroids[_bestCluster[n]]));
                 Contracts.Assert(KMeansLloydsYinYangTrain.AlmostLeq(bestDistance, _upperBound[n]));
                 for (int j = 0; j < centroids.Length; j++)
                 {
                     if (j == _bestCluster[n])
                         continue;
-                    float distance = MathUtils.Sqrt(VectorUtils.L2DistSquared(ref features, ref centroids[j]));
+                    float distance = MathUtils.Sqrt(VectorUtils.L2DistSquared(in features, in centroids[j]));
 
                     Contracts.Assert(AlmostLeq(_lowerBound[n], distance));
                 }
@@ -1309,9 +1316,11 @@ namespace Microsoft.ML.Runtime.KMeans
             Initialize(ch, cursorFactory, totalTrainingInstances, numThreads, k, dimensionality, accelMemBudgetInMb,
                 out state, out workState, out reducedState);
             float[] centroidL2s = new float[k];
+            ReadOnlyVBuffer<float>[] readOnlyCentroids = new ReadOnlyVBuffer<float>[centroids.Length];
+            KMeansUtils.UpdateReadOnlyCache(centroids, ref readOnlyCentroids);
 
             for (int i = 0; i < k; i++)
-                centroidL2s[i] = VectorUtils.NormSquared(centroids[i]);
+                centroidL2s[i] = VectorUtils.NormSquared(in readOnlyCentroids[i]);
 
             using (var pch = host.StartProgressChannel("KMeansTrain"))
             {
@@ -1338,7 +1347,7 @@ namespace Microsoft.ML.Runtime.KMeans
                             ops[i] = new Action(() =>
                             {
                                 using (var cursor = set[chunkId])
-                                    ProcessChunk(cursor, state, workState[chunkId], k, centroids, centroidL2s);
+                                    ProcessChunk(cursor, state, workState[chunkId], k, readOnlyCentroids, centroidL2s);
                             });
                         }
 
@@ -1350,7 +1359,7 @@ namespace Microsoft.ML.Runtime.KMeans
                     else
                     {
                         using (var cursor = cursorFactory.Create())
-                            ProcessChunk(cursor, state, reducedState, k, centroids, centroidL2s);
+                            ProcessChunk(cursor, state, reducedState, k, readOnlyCentroids, centroidL2s);
                     }
 
                     WorkChunkState.Reduce(workState, reducedState);
@@ -1387,11 +1396,13 @@ namespace Microsoft.ML.Runtime.KMeans
                     }
 #endif
                     reducedState.UpdateClusters(centroids, centroidL2s, state.Delta, ref state.DeltaMax);
+                    KMeansUtils.UpdateReadOnlyCache(centroids, ref readOnlyCentroids);
+
                     isConverged = reducedState.AverageScoreDelta < convergenceThreshold;
                     state.Iteration++;
 
                     if (state.Iteration % 100 == 0)
-                        KMeansUtils.VerifyModelConsistency(centroids);
+                        KMeansUtils.VerifyModelConsistency(readOnlyCentroids);
                 }
             }
         }
@@ -1434,7 +1445,7 @@ namespace Microsoft.ML.Runtime.KMeans
         /// this chunk will be one of _numThreads chunks and the RowCursor will be part of a RowCursorSet. In the
         /// unthreaded version, this chunk will be the final chunk and hold state for the entire data set.
         /// </summary>
-        private static void ProcessChunk(FeatureFloatVectorCursor cursor, SharedState state, WorkChunkStateBase chunkState, int k, VBuffer<float>[] centroids, float[] centroidL2s)
+        private static void ProcessChunk(FeatureFloatVectorCursor cursor, SharedState state, WorkChunkStateBase chunkState, int k, ReadOnlyVBuffer<float>[] centroids, float[] centroidL2s)
         {
             while (cursor.MoveNext())
             {
@@ -1449,7 +1460,7 @@ namespace Microsoft.ML.Runtime.KMeans
                     {
                         chunkState.KeepYinYangAssignment(state.GetBestCluster(n));
 #if DEBUG
-                        state.AssertValidYinYangBounds(n, ref cursor.Features, centroids);
+                        state.AssertValidYinYangBounds(n, cursor.Features, centroids);
 #endif
                         continue;
                     }
@@ -1700,7 +1711,7 @@ namespace Microsoft.ML.Runtime.KMeans
             };
         }
 
-        public static int FindBestCluster(in ReadOnlyVBuffer<float> features, VBuffer<float>[] centroids, float[] centroidL2s)
+        public static int FindBestCluster(in ReadOnlyVBuffer<float> features, ReadOnlyVBuffer<float>[] centroids, float[] centroidL2s)
         {
             float discard1;
             float discard2;
@@ -1710,7 +1721,7 @@ namespace Microsoft.ML.Runtime.KMeans
             return cluster;
         }
 
-        public static int FindBestCluster(in ReadOnlyVBuffer<float> features, VBuffer<float>[] centroids, float[] centroidL2s, int centroidCount, bool realWeight, out float minDistance)
+        public static int FindBestCluster(in ReadOnlyVBuffer<float> features, ReadOnlyVBuffer<float>[] centroids, float[] centroidL2s, int centroidCount, bool realWeight, out float minDistance)
         {
             float discard1;
             int discard2;
@@ -1735,7 +1746,7 @@ namespace Microsoft.ML.Runtime.KMeans
         /// <param name="secCluster">The index of the second nearest centroid, or -1 if <paramref name="centroids" /> only contains a single point.</param>
         public static void FindBestCluster(
             in ReadOnlyVBuffer<float> features,
-            VBuffer<float>[] centroids, float[] centroidL2s, int centroidCount, bool needRealDistance,
+            ReadOnlyVBuffer<float>[] centroids, float[] centroidL2s, int centroidCount, bool needRealDistance,
             out float minDistance, out int cluster, out float secMinDistance, out int secCluster)
         {
             Contracts.Assert(centroids.Length >= centroidCount && centroidL2s.Length >= centroidCount && centroidCount > 0);
@@ -1750,7 +1761,7 @@ namespace Microsoft.ML.Runtime.KMeans
             {
                 // this is not a real distance, since we don't add L2 norm of the instance
                 // This won't affect minimum calculations, and total score will just be lowered by sum(L2 norms)
-                float distance = -2 * VectorUtils.DotProduct(in features, centroids[j]) + centroidL2s[j];
+                float distance = -2 * VectorUtils.DotProduct(in features, in centroids[j]) + centroidL2s[j];
 
                 if (distance <= minDistance)
                 {
@@ -1787,6 +1798,24 @@ namespace Microsoft.ML.Runtime.KMeans
         {
             foreach (var centroid in centroids)
                 Contracts.Check(centroid.Items().Select(x => x.Value).All(FloatUtils.IsFinite), "Model training failed: non-finite coordinates are generated");
+        }
+
+        /// <summary>
+        /// Checks that all coordinates of all centroids are finite, and throws otherwise
+        /// </summary>
+        public static void VerifyModelConsistency(ReadOnlyVBuffer<float>[] centroids)
+        {
+            for (int i = 0; i < centroids.Length; i++)
+                Contracts.Check(centroids[i].GetValues().All(FloatUtils.IsFinite), "Model training failed: non-finite coordinates are generated");
+        }
+
+        public static void UpdateReadOnlyCache(VBuffer<float>[] source, ref ReadOnlyVBuffer<float>[] destination)
+        {
+            Utils.EnsureSize(ref destination, source.Length);
+            for (int i = 0; i < source.Length; i++)
+            {
+                destination[i] = source[i];
+            }
         }
     }
 }

@@ -153,15 +153,17 @@ namespace Microsoft.ML.Runtime.Internal.Utilities
 
             // REVIEW: This is analogous to an old Vector method, but is there
             // any real reason to have it given that we have the Items extension method?
+            var values = a.GetValues();
             if (a.IsDense)
             {
-                for (int i = 0; i < a.Length; i++)
-                    visitor(i, a.Values[i]);
+                for (int i = 0; i < values.Length; i++)
+                    visitor(i, values[i]);
             }
             else
             {
-                for (int i = 0; i < a.Count; i++)
-                    visitor(a.Indices[i], a.Values[i]);
+                var indices = a.GetIndices();
+                for (int i = 0; i < values.Length; i++)
+                    visitor(indices[i], values[i]);
             }
         }
 
@@ -685,30 +687,32 @@ namespace Microsoft.ML.Runtime.Internal.Utilities
                 return;
             }
 
+            var srcValues = src.GetValues();
             if (src.IsDense)
             {
                 // Major case 2, with src.Dense.
                 if (!dst.IsDense)
                     Densify(ref dst);
                 // Both are now dense. Both cases of outer are covered.
-                for (int i = 0; i < src.Length; i++)
-                    manip(i, src.Values[i], ref dst.Values[i]);
+                for (int i = 0; i < srcValues.Length; i++)
+                    manip(i, srcValues[i], ref dst.Values[i]);
                 return;
             }
 
+            var srcIndices = src.GetIndices();
             if (dst.IsDense)
             {
                 // Major case 3, with dst.Dense. Note that !a.Dense.
                 if (outer)
                 {
                     int sI = 0;
-                    int sIndex = src.Indices[sI];
+                    int sIndex = srcIndices[sI];
                     for (int i = 0; i < dst.Length; ++i)
                     {
                         if (i == sIndex)
                         {
-                            manip(i, src.Values[sI], ref dst.Values[i]);
-                            sIndex = ++sI == src.Count ? src.Length : src.Indices[sI];
+                            manip(i, srcValues[sI], ref dst.Values[i]);
+                            sIndex = ++sI == src.Count ? src.Length : srcIndices[sI];
                         }
                         else
                             manip(i, default(TSrc), ref dst.Values[i]);
@@ -717,7 +721,7 @@ namespace Microsoft.ML.Runtime.Internal.Utilities
                 else
                 {
                     for (int i = 0; i < src.Count; i++)
-                        manip(src.Indices[i], src.Values[i], ref dst.Values[src.Indices[i]]);
+                        manip(srcIndices[i], srcValues[i], ref dst.Values[srcIndices[i]]);
                 }
                 return;
             }
@@ -732,7 +736,7 @@ namespace Microsoft.ML.Runtime.Internal.Utilities
                 Array.Clear(values, 0, src.Count);
                 Utils.EnsureSize(ref indices, src.Count, src.Length);
                 for (int i = 0; i < src.Count; i++)
-                    manip(indices[i] = src.Indices[i], src.Values[i], ref values[i]);
+                    manip(indices[i] = srcIndices[i], srcValues[i], ref values[i]);
                 dst = new VBuffer<TDst>(src.Length, src.Count, values, indices);
                 return;
             }
@@ -743,7 +747,7 @@ namespace Microsoft.ML.Runtime.Internal.Utilities
             // Try to find each src index in dst indices, counting how many more we'll add.
             for (int sI = 0; sI < src.Count; sI++)
             {
-                int sIndex = src.Indices[sI];
+                int sIndex = srcIndices[sI];
                 while (dI < dst.Count && dst.Indices[dI] < sIndex)
                     dI++;
                 if (dI == dst.Count)
@@ -790,7 +794,7 @@ namespace Microsoft.ML.Runtime.Internal.Utilities
                 Utils.EnsureSize(ref values, newCount, dst.Length, keepOld: false);
                 int sI = src.Count - 1;
                 dI = dst.Count - 1;
-                int sIndex = src.Indices[sI];
+                int sIndex = srcIndices[sI];
                 int dIndex = dst.Indices[dI];
 
                 // Go from the end, so that even if we're writing over dst's vectors in
@@ -809,8 +813,8 @@ namespace Microsoft.ML.Runtime.Internal.Utilities
                     {
                         indices[i] = sIndex;
                         values[i] = default(TDst);
-                        manip(sIndex, src.Values[sI], ref values[i]);
-                        sIndex = --sI >= 0 ? src.Indices[sI] : -1;
+                        manip(sIndex, srcValues[sI], ref values[i]);
+                        sIndex = --sI >= 0 ? srcIndices[sI] : -1;
                     }
                     else
                     {
@@ -819,8 +823,8 @@ namespace Microsoft.ML.Runtime.Internal.Utilities
                         Contracts.Assert(sIndex == dIndex);
                         indices[i] = dIndex;
                         values[i] = dst.Values[dI];
-                        manip(sIndex, src.Values[sI], ref values[i]);
-                        sIndex = --sI >= 0 ? src.Indices[sI] : -1;
+                        manip(sIndex, srcValues[sI], ref values[i]);
+                        sIndex = --sI >= 0 ? srcIndices[sI] : -1;
                         dIndex = --dI >= 0 ? dst.Indices[dI] : -1;
                     }
                 }
@@ -836,8 +840,8 @@ namespace Microsoft.ML.Runtime.Internal.Utilities
                     Contracts.Assert(src.Count == dst.Count);
                     for (int i = 0; i < src.Count; i++)
                     {
-                        Contracts.Assert(src.Indices[i] == dst.Indices[i]);
-                        manip(src.Indices[i], src.Values[i], ref dst.Values[i]);
+                        Contracts.Assert(srcIndices[i] == dst.Indices[i]);
+                        manip(srcIndices[i], srcValues[i], ref dst.Values[i]);
                     }
                     return;
                 }
@@ -847,13 +851,13 @@ namespace Microsoft.ML.Runtime.Internal.Utilities
                 if (outer)
                 {
                     int sI = 0;
-                    int sIndex = src.Indices[sI];
+                    int sIndex = srcIndices[sI];
                     for (int i = 0; i < dst.Count; ++i)
                     {
                         if (dst.Indices[i] == sIndex)
                         {
-                            manip(sIndex, src.Values[sI], ref dst.Values[i]);
-                            sIndex = ++sI == src.Count ? src.Length : src.Indices[sI];
+                            manip(sIndex, srcValues[sI], ref dst.Values[i]);
+                            sIndex = ++sI == src.Count ? src.Length : srcIndices[sI];
                         }
                         else
                             manip(dst.Indices[i], default(TSrc), ref dst.Values[i]);
@@ -863,11 +867,11 @@ namespace Microsoft.ML.Runtime.Internal.Utilities
                 {
                     for (int sI = 0; sI < src.Count; sI++)
                     {
-                        int sIndex = src.Indices[sI];
+                        int sIndex = srcIndices[sI];
                         while (dst.Indices[dI] < sIndex)
                             dI++;
                         Contracts.Assert(dst.Indices[dI] == sIndex);
-                        manip(sIndex, src.Values[sI], ref dst.Values[dI++]);
+                        manip(sIndex, srcValues[sI], ref dst.Values[dI++]);
                     }
                 }
                 return;
@@ -883,19 +887,19 @@ namespace Microsoft.ML.Runtime.Internal.Utilities
                 for (dI = 0; dI < dst.Count; ++dI)
                 {
                     int bIndex = dst.Indices[dI];
-                    while (src.Indices[sI] < bIndex)
+                    while (srcIndices[sI] < bIndex)
                         sI++;
-                    Contracts.Assert(src.Indices[sI] == bIndex);
+                    Contracts.Assert(srcIndices[sI] == bIndex);
                     dst.Indices[dI] = sI++;
                 }
                 dst = new VBuffer<TDst>(newCount, dst.Count, dst.Values, dst.Indices);
                 Densify(ref dst);
                 int[] indices = dst.Indices;
                 Utils.EnsureSize(ref indices, src.Count, src.Length, keepOld: false);
-                src.Indices.CopyTo(indices);
+                srcIndices.CopyTo(indices);
                 dst = new VBuffer<TDst>(src.Length, newCount, dst.Values, indices);
                 for (sI = 0; sI < src.Count; sI++)
-                    manip(src.Indices[sI], src.Values[sI], ref dst.Values[sI]);
+                    manip(srcIndices[sI], srcValues[sI], ref dst.Values[sI]);
                 return;
             }
 
@@ -1166,17 +1170,19 @@ namespace Microsoft.ML.Runtime.Internal.Utilities
             int[] indices = dst.Indices;
             TDst[] values = dst.Values;
             Utils.EnsureSize(ref values, src.Count, src.Length, keepOld: false);
+            var srcValues = src.GetValues();
             if (src.IsDense)
             {
                 for (int i = 0; i < src.Length; ++i)
-                    values[i] = func(i, src.Values[i]);
+                    values[i] = func(i, srcValues[i]);
             }
             else
             {
+                var srcIndices = src.GetIndices();
                 Utils.EnsureSize(ref indices, src.Count, src.Length, keepOld: false);
-                src.Indices.CopyTo(indices);
+                srcIndices.CopyTo(indices);
                 for (int i = 0; i < src.Count; ++i)
-                    values[i] = func(src.Indices[i], src.Values[i]);
+                    values[i] = func(srcIndices[i], srcValues[i]);
             }
             dst = new VBuffer<TDst>(src.Length, src.Count, values, indices);
         }
@@ -1215,6 +1221,10 @@ namespace Microsoft.ML.Runtime.Internal.Utilities
             int aI = 0;
             int bI = 0;
             TDst[] values = dst.Values;
+            var aValues = a.GetValues();
+            ReadOnlySpan<int> aIndices;
+            var bValues = b.GetValues();
+            ReadOnlySpan<int> bIndices;
             if (a.IsDense || b.IsDense)
             {
                 // Case 2. One of the two inputs is dense. The output will be dense.
@@ -1223,26 +1233,28 @@ namespace Microsoft.ML.Runtime.Internal.Utilities
                 if (!a.IsDense)
                 {
                     // a is sparse, b is dense
+                    aIndices = a.GetIndices();
                     for (int i = 0; i < b.Length; i++)
                     {
-                        TSrc1 aVal = (aI < a.Count && i == a.Indices[aI]) ? a.Values[aI++] : default(TSrc1);
-                        values[i] = func(i, aVal, b.Values[i]);
+                        TSrc1 aVal = (aI < a.Count && i == aIndices[aI]) ? aValues[aI++] : default(TSrc1);
+                        values[i] = func(i, aVal, bValues[i]);
                     }
                 }
                 else if (!b.IsDense)
                 {
                     // b is sparse, a is dense
+                    bIndices = b.GetIndices();
                     for (int i = 0; i < a.Length; i++)
                     {
-                        TSrc2 bVal = (bI < b.Count && i == b.Indices[bI]) ? b.Values[bI++] : default(TSrc2);
-                        values[i] = func(i, a.Values[i], bVal);
+                        TSrc2 bVal = (bI < b.Count && i == bIndices[bI]) ? bValues[bI++] : default(TSrc2);
+                        values[i] = func(i, aValues[i], bVal);
                     }
                 }
                 else
                 {
                     // both dense
                     for (int i = 0; i < a.Length; i++)
-                        values[i] = func(i, a.Values[i], b.Values[i]);
+                        values[i] = func(i, aValues[i], bValues[i]);
                 }
                 dst = new VBuffer<TDst>(a.Length, values, dst.Indices);
                 return;
@@ -1250,9 +1262,11 @@ namespace Microsoft.ML.Runtime.Internal.Utilities
 
             // a, b both sparse.
             int newCount = 0;
+            aIndices = a.GetIndices();
+            bIndices = b.GetIndices();
             while (aI < a.Count && bI < b.Count)
             {
-                int aCompB = a.Indices[aI] - b.Indices[bI];
+                int aCompB = aIndices[aI] - bIndices[bI];
                 if (aCompB <= 0) // a is no larger than b.
                     aI++;
                 if (aCompB >= 0) // b is no larger than a.
@@ -1277,41 +1291,41 @@ namespace Microsoft.ML.Runtime.Internal.Utilities
                 if (newCount == a.Count)
                 {
                     // Case 3, a and b actually have the same indices!
-                    a.Indices.CopyTo(indices);
+                    aIndices.CopyTo(indices);
                     for (aI = 0; aI < a.Count; aI++)
                     {
-                        Contracts.Assert(a.Indices[aI] == b.Indices[aI]);
-                        values[aI] = func(a.Indices[aI], a.Values[aI], b.Values[aI]);
+                        Contracts.Assert(aIndices[aI] == bIndices[aI]);
+                        values[aI] = func(aIndices[aI], aValues[aI], bValues[aI]);
                     }
                 }
                 else
                 {
                     // Case 4, a's indices are a subset of b's.
-                    b.Indices.CopyTo(indices);
+                    bIndices.CopyTo(indices);
                     aI = 0;
                     for (bI = 0; aI < a.Count && bI < b.Count; bI++)
                     {
-                        Contracts.Assert(a.Indices[aI] >= b.Indices[bI]);
-                        TSrc1 aVal = a.Indices[aI] == b.Indices[bI] ? a.Values[aI++] : default(TSrc1);
-                        values[bI] = func(b.Indices[bI], aVal, b.Values[bI]);
+                        Contracts.Assert(aIndices[aI] >= bIndices[bI]);
+                        TSrc1 aVal = aIndices[aI] == bIndices[bI] ? aValues[aI++] : default(TSrc1);
+                        values[bI] = func(bIndices[bI], aVal, bValues[bI]);
                     }
                     for (; bI < b.Count; bI++)
-                        values[bI] = func(b.Indices[bI], default(TSrc1), b.Values[bI]);
+                        values[bI] = func(bIndices[bI], default(TSrc1), bValues[bI]);
                 }
             }
             else if (newCount == a.Count)
             {
                 // Case 5, b's indices are a subset of a's.
-                a.Indices.CopyTo(indices);
+                aIndices.CopyTo(indices);
                 bI = 0;
                 for (aI = 0; bI < b.Count && aI < a.Count; aI++)
                 {
-                    Contracts.Assert(b.Indices[bI] >= a.Indices[aI]);
-                    TSrc2 bVal = a.Indices[aI] == b.Indices[bI] ? b.Values[bI++] : default(TSrc2);
-                    values[aI] = func(a.Indices[aI], a.Values[aI], bVal);
+                    Contracts.Assert(bIndices[bI] >= aIndices[aI]);
+                    TSrc2 bVal = aIndices[aI] == bIndices[bI] ? bValues[bI++] : default(TSrc2);
+                    values[aI] = func(aIndices[aI], aValues[aI], bVal);
                 }
                 for (; aI < a.Count; aI++)
-                    values[aI] = func(a.Indices[aI], a.Values[aI], default(TSrc2));
+                    values[aI] = func(aIndices[aI], aValues[aI], default(TSrc2));
             }
             else
             {
@@ -1321,27 +1335,27 @@ namespace Microsoft.ML.Runtime.Internal.Utilities
                 TSrc2 bVal = default(TSrc2);
                 while (aI < a.Count && bI < b.Count)
                 {
-                    int aCompB = a.Indices[aI] - b.Indices[bI];
+                    int aCompB = aIndices[aI] - bIndices[bI];
                     int index = 0;
 
                     if (aCompB < 0)
                     {
-                        index = a.Indices[aI];
-                        aVal = a.Values[aI++];
+                        index = aIndices[aI];
+                        aVal = aValues[aI++];
                         bVal = default(TSrc2);
                     }
                     else if (aCompB > 0)
                     {
-                        index = b.Indices[bI];
+                        index = bIndices[bI];
                         aVal = default(TSrc1);
-                        bVal = b.Values[bI++];
+                        bVal = bValues[bI++];
                     }
                     else
                     {
-                        index = a.Indices[aI];
-                        Contracts.Assert(index == b.Indices[bI]);
-                        aVal = a.Values[aI++];
-                        bVal = b.Values[bI++];
+                        index = aIndices[aI];
+                        Contracts.Assert(index == bIndices[bI]);
+                        aVal = aValues[aI++];
+                        bVal = bValues[bI++];
                     }
                     values[newI] = func(index, aVal, bVal);
                     indices[newI++] = index;
@@ -1349,15 +1363,15 @@ namespace Microsoft.ML.Runtime.Internal.Utilities
 
                 for (; aI < a.Count; aI++)
                 {
-                    int index = a.Indices[aI];
-                    values[newI] = func(index, a.Values[aI], default(TSrc2));
+                    int index = aIndices[aI];
+                    values[newI] = func(index, aValues[aI], default(TSrc2));
                     indices[newI++] = index;
                 }
 
                 for (; bI < b.Count; bI++)
                 {
-                    int index = b.Indices[bI];
-                    values[newI] = func(index, default(TSrc1), b.Values[bI]);
+                    int index = bIndices[bI];
+                    values[newI] = func(index, default(TSrc1), bValues[bI]);
                     indices[newI++] = index;
                 }
             }
