@@ -540,30 +540,47 @@ namespace Microsoft.ML.Transforms.Conversions
             var mask = (1U << _exes[iinfo].HashBits) - 1;
             var hashSeed = _exes[iinfo].HashSeed;
             bool ordered = _exes[iinfo].Ordered;
-            var denseSource = default(VBuffer<TSrc>);
+            TSrc[] denseValues = null;
             return
-                (ref VBuffer<uint> dst) =>
-                {
-                    getSrc(ref src);
-                    Host.Check(src.Length == expectedSrcLength);
-                    var hashes = VBufferEditor.Create(ref dst, n);
-                    src.CopyToDense(ref denseSource);
-                    for (int i = 0; i < n; i++)
-                    {
-                        uint hash = hashSeed;
-                        foreach (var srcSlot in slotMap[i])
-                        {
-                            // REVIEW: some legacy code hashes 0 for srcSlot in ord- case, do we need to preserve this behavior?
-                            if (ordered)
-                                hash = Hashing.MurmurRound(hash, (uint)srcSlot);
-                            hash = hashFunction(denseSource.GetItemOrDefault(srcSlot), hash);
-                        }
+               (ref VBuffer<uint> dst) =>
+               {
+                   getSrc(ref src);
+                   Host.Check(src.Length == expectedSrcLength);
+                   ReadOnlySpan<TSrc> values;
 
-                        hashes.Values[i] = (Hashing.MixHash(hash) & mask) + 1; // +1 to offset from zero, which has special meaning for KeyType
-                    }
+                   // force-densify the input
+                   // REVIEW: this performs poorly if only a fraction of sparse vector is used for hashing.
+                   // This scenario was unlikely at the time of writing. Regardless of performance, the hash value
+                   // needs to be consistent across equivalent representations - sparse vs dense.
+                   if (src.IsDense)
+                       values = src.GetValues();
+                   else
+                   {
+                       if (denseValues == null)
+                           denseValues = new TSrc[expectedSrcLength];
+                       src.CopyTo(denseValues);
+                       values = denseValues;
+                   }
 
-                    dst = hashes.Commit();
-                };
+                   var hashes = VBufferEditor.Create(ref dst, n);
+
+                   for (int i = 0; i < n; i++)
+                   {
+                       uint hash = hashSeed;
+
+                       foreach (var srcSlot in slotMap[i])
+                       {
+                           // REVIEW: some legacy code hashes 0 for srcSlot in ord- case, do we need to preserve this behavior?
+                           if (ordered)
+                               hash = Hashing.MurmurRound(hash, (uint)srcSlot);
+                           hash = hashFunction(in values[srcSlot], hash);
+                       }
+
+                       hashes.Values[i] = (Hashing.MixHash(hash) & mask) + 1; // +1 to offset from zero, which has special meaning for KeyType
+                   }
+
+                   dst = hashes.Commit();
+               };
         }
 
         /// <summary>
@@ -587,19 +604,34 @@ namespace Microsoft.ML.Transforms.Conversions
             var mask = (1U << _exes[iinfo].HashBits) - 1;
             var hashSeed = _exes[iinfo].HashSeed;
             bool ordered = _exes[iinfo].Ordered;
-            var denseSource = default(VBuffer<TSrc>);
+            TSrc[] denseValues = null;
             return
                 (ref uint dst) =>
                 {
                     getSrc(ref src);
                     Host.Check(src.Length == expectedSrcLength);
-                    src.CopyToDense(ref denseSource);
+
+                    ReadOnlySpan<TSrc> values;
+                    // force-densify the input
+                    // REVIEW: this performs poorly if only a fraction of sparse vector is used for hashing.
+                    // This scenario was unlikely at the time of writing. Regardless of performance, the hash value
+                    // needs to be consistent across equivalent representations - sparse vs dense.
+                    if (src.IsDense)
+                        values = src.GetValues();
+                    else
+                    {
+                        if (denseValues == null)
+                            denseValues = new TSrc[expectedSrcLength];
+                        src.CopyTo(denseValues);
+                        values = denseValues;
+                    }
+
                     uint hash = hashSeed;
                     foreach (var srcSlot in slots)
                     {
                         if (ordered)
                             hash = Hashing.MurmurRound(hash, (uint)srcSlot);
-                        hash = hashFunction(denseSource.GetItemOrDefault(srcSlot), hash);
+                        hash = hashFunction(in values[srcSlot], hash);
                     }
                     dst = (Hashing.MixHash(hash) & mask) + 1; // +1 to offset from zero, which has special meaning for KeyType
                 };
