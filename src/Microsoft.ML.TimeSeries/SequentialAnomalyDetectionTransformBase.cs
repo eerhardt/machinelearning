@@ -166,7 +166,7 @@ namespace Microsoft.ML.TimeSeriesProcessing
         private protected SequentialAnomalyDetectionTransformBase(int windowSize, int initialWindowSize, string inputColumnName, string outputColumnName, string name, IHostEnvironment env,
             AnomalySide anomalySide, MartingaleType martingale, AlertingScore alertingScore, Double powerMartingaleEpsilon,
             Double alertThreshold)
-            : base(Contracts.CheckRef(env, nameof(env)).Register(name), windowSize, initialWindowSize, outputColumnName, inputColumnName, new VectorType(NumberDataViewType.R8, GetOutputLength(alertingScore, env)))
+            : base(Contracts.CheckRef(env, nameof(env)).Register(name), windowSize, initialWindowSize, outputColumnName, inputColumnName, new VectorType(NumberDataViewType.Double, GetOutputLength(alertingScore, env)))
         {
             Host.CheckUserArg(Enum.IsDefined(typeof(MartingaleType), martingale), nameof(ArgumentsBase.Martingale), "Value is undefined.");
             Host.CheckUserArg(Enum.IsDefined(typeof(AnomalySide), anomalySide), nameof(ArgumentsBase.Side), "Value is undefined.");
@@ -593,7 +593,7 @@ namespace Microsoft.ML.TimeSeriesProcessing
                     throw _host.ExceptSchemaMismatch(nameof(inputSchema), "input", parent.InputColumnName);
 
                 var colType = inputSchema[_inputColumnIndex].Type;
-                if (colType != NumberDataViewType.R4)
+                if (colType != NumberDataViewType.Single)
                     throw _host.ExceptSchemaMismatch(nameof(inputSchema), "input", parent.InputColumnName, "float", colType.ToString());
 
                 _parent = parent;
@@ -609,7 +609,7 @@ namespace Microsoft.ML.TimeSeriesProcessing
                 var meta = new MetadataBuilder();
                 meta.AddSlotNames(_parent._outputLength, GetSlotNames);
                 var info = new DataViewSchema.DetachedColumn[1];
-                info[0] = new DataViewSchema.DetachedColumn(_parent.OutputColumnName, new VectorType(NumberDataViewType.R8, _parent._outputLength), meta.GetMetadata());
+                info[0] = new DataViewSchema.DetachedColumn(_parent.OutputColumnName, new VectorType(NumberDataViewType.Double, _parent._outputLength), meta.GetMetadata());
                 return info;
             }
 

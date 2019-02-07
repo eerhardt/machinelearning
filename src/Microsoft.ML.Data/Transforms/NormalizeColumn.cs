@@ -200,7 +200,7 @@ namespace Microsoft.ML.Transforms.Normalizers
                     itemType = vectorType.ItemType;
                 }
 
-                if (itemType != NumberDataViewType.R4 && itemType != NumberDataViewType.R8)
+                if (itemType != NumberDataViewType.Single && itemType != NumberDataViewType.Double)
                     return "Expected R4 or R8 item type";
 
                 return null;
@@ -386,16 +386,16 @@ namespace Microsoft.ML.Transforms.Normalizers
                 Contracts.CheckValue(host, nameof(host));
                 if (typeSrc is NumberDataViewType)
                 {
-                    if (typeSrc == NumberDataViewType.R4)
+                    if (typeSrc == NumberDataViewType.Single)
                         return Sng.ImplOne.Create(ctx, host, typeSrc);
-                    if (typeSrc == NumberDataViewType.R8)
+                    if (typeSrc == NumberDataViewType.Double)
                         return Dbl.ImplOne.Create(ctx, host, typeSrc);
                 }
                 else if (typeSrc is VectorType vectorType && vectorType.ItemType is NumberDataViewType)
                 {
-                    if (vectorType.ItemType == NumberDataViewType.R4)
+                    if (vectorType.ItemType == NumberDataViewType.Single)
                         return Sng.ImplVec.Create(ctx, host, vectorType);
-                    if (vectorType.ItemType == NumberDataViewType.R8)
+                    if (vectorType.ItemType == NumberDataViewType.Double)
                         return Dbl.ImplVec.Create(ctx, host, vectorType);
                 }
                 throw host.ExceptUserArg(nameof(AffineArgumentsBase.Columns), "Wrong column type. Expected: R4, R8, Vec<R4, n> or Vec<R8, n>. Got: {0}.", typeSrc.ToString());
@@ -503,16 +503,16 @@ namespace Microsoft.ML.Transforms.Normalizers
                 Contracts.CheckValue(host, nameof(host));
                 if (typeSrc is NumberDataViewType)
                 {
-                    if (typeSrc == NumberDataViewType.R4)
+                    if (typeSrc == NumberDataViewType.Single)
                         return Sng.ImplOne.Create(ctx, host, typeSrc);
-                    if (typeSrc == NumberDataViewType.R8)
+                    if (typeSrc == NumberDataViewType.Double)
                         return Dbl.ImplOne.Create(ctx, host, typeSrc);
                 }
                 else if (typeSrc is VectorType vectorType && vectorType.ItemType is NumberDataViewType)
                 {
-                    if (vectorType.ItemType == NumberDataViewType.R4)
+                    if (vectorType.ItemType == NumberDataViewType.Single)
                         return Sng.ImplVec.Create(ctx, host, vectorType);
-                    if (vectorType.ItemType == NumberDataViewType.R8)
+                    if (vectorType.ItemType == NumberDataViewType.Double)
                         return Dbl.ImplVec.Create(ctx, host, vectorType);
                 }
                 throw host.ExceptUserArg(nameof(AffineArgumentsBase.Columns), "Wrong column type. Expected: R4, R8, Vec<R4, n> or Vec<R8, n>. Got: {0}.", typeSrc);
@@ -637,16 +637,16 @@ namespace Microsoft.ML.Transforms.Normalizers
                 Contracts.CheckValue(host, nameof(host));
                 if (typeSrc is NumberDataViewType)
                 {
-                    if (typeSrc == NumberDataViewType.R4)
+                    if (typeSrc == NumberDataViewType.Single)
                         return Sng.ImplOne.Create(ctx, host, typeSrc);
-                    if (typeSrc == NumberDataViewType.R8)
+                    if (typeSrc == NumberDataViewType.Double)
                         return Dbl.ImplOne.Create(ctx, host, typeSrc);
                 }
                 if (typeSrc is VectorType vectorType && vectorType.ItemType is NumberDataViewType)
                 {
-                    if (vectorType.ItemType == NumberDataViewType.R4)
+                    if (vectorType.ItemType == NumberDataViewType.Single)
                         return Sng.ImplVec.Create(ctx, host, vectorType);
-                    if (vectorType.ItemType == NumberDataViewType.R8)
+                    if (vectorType.ItemType == NumberDataViewType.Double)
                         return Dbl.ImplVec.Create(ctx, host, vectorType);
                 }
                 throw host.ExceptUserArg(nameof(BinArguments.Columns), "Wrong column type. Expected: R4, R8, Vec<R4, n> or Vec<R8, n>. Got: {0}.", typeSrc);
@@ -769,7 +769,7 @@ namespace Microsoft.ML.Transforms.Normalizers
 
                     int size = type.GetKeyCountAsInt32(Host);
                     ulong src = 0;
-                    var getSrc = RowCursorUtils.GetGetterAs<ulong>(NumberDataViewType.U8, row, col);
+                    var getSrc = RowCursorUtils.GetGetterAs<ulong>(NumberDataViewType.UInt64, row, col);
                     return
                         (ref int dst) =>
                         {
@@ -789,7 +789,7 @@ namespace Microsoft.ML.Transforms.Normalizers
                     labelCardinality = 2; // any numeric column is split into 0 and 1
 
                     Double src = 0;
-                    var getSrc = RowCursorUtils.GetGetterAs<Double>(NumberDataViewType.R8, row, col);
+                    var getSrc = RowCursorUtils.GetGetterAs<Double>(NumberDataViewType.Double, row, col);
                     return
                         (ref int dst) =>
                         {
@@ -930,16 +930,16 @@ namespace Microsoft.ML.Transforms.Normalizers
             {
                 if (srcType is NumberDataViewType)
                 {
-                    if (srcType == NumberDataViewType.R4)
+                    if (srcType == NumberDataViewType.Single)
                         return Sng.MinMaxOneColumnFunctionBuilder.Create(column, host, srcType, cursor.GetGetter<Single>(srcIndex));
-                    if (srcType == NumberDataViewType.R8)
+                    if (srcType == NumberDataViewType.Double)
                         return Dbl.MinMaxOneColumnFunctionBuilder.Create(column, host, srcType, cursor.GetGetter<Double>(srcIndex));
                 }
                 if (srcType is VectorType vectorType && vectorType.IsKnownSize && vectorType.ItemType is NumberDataViewType)
                 {
-                    if (vectorType.ItemType == NumberDataViewType.R4)
+                    if (vectorType.ItemType == NumberDataViewType.Single)
                         return Sng.MinMaxVecColumnFunctionBuilder.Create(column, host, vectorType, cursor.GetGetter<VBuffer<Single>>(srcIndex));
-                    if (vectorType.ItemType == NumberDataViewType.R8)
+                    if (vectorType.ItemType == NumberDataViewType.Double)
                         return Dbl.MinMaxVecColumnFunctionBuilder.Create(column, host, vectorType, cursor.GetGetter<VBuffer<Double>>(srcIndex));
                 }
                 throw host.ExceptParam(nameof(srcType), "Wrong column type for input column. Expected: R4, R8, Vec<R4, n> or Vec<R8, n>. Got: {0}.", srcType.ToString());
@@ -969,16 +969,16 @@ namespace Microsoft.ML.Transforms.Normalizers
 
                 if (srcType is NumberDataViewType)
                 {
-                    if (srcType == NumberDataViewType.R4)
+                    if (srcType == NumberDataViewType.Single)
                         return Sng.MeanVarOneColumnFunctionBuilder.Create(column, host, srcType, cursor.GetGetter<Single>(srcIndex));
-                    if (srcType == NumberDataViewType.R8)
+                    if (srcType == NumberDataViewType.Double)
                         return Dbl.MeanVarOneColumnFunctionBuilder.Create(column, host, srcType, cursor.GetGetter<Double>(srcIndex));
                 }
                 if (srcType is VectorType vectorType && vectorType.IsKnownSize && vectorType.ItemType is NumberDataViewType)
                 {
-                    if (vectorType.ItemType == NumberDataViewType.R4)
+                    if (vectorType.ItemType == NumberDataViewType.Single)
                         return Sng.MeanVarVecColumnFunctionBuilder.Create(column, host, vectorType, cursor.GetGetter<VBuffer<Single>>(srcIndex));
-                    if (vectorType.ItemType == NumberDataViewType.R8)
+                    if (vectorType.ItemType == NumberDataViewType.Double)
                         return Dbl.MeanVarVecColumnFunctionBuilder.Create(column, host, vectorType, cursor.GetGetter<VBuffer<Double>>(srcIndex));
                 }
                 throw host.ExceptParam(nameof(srcType), "Wrong column type for input column. Expected: R4, R8, Vec<R4, n> or Vec<R8, n>. Got: {0}.", srcType.ToString());
@@ -1009,16 +1009,16 @@ namespace Microsoft.ML.Transforms.Normalizers
 
                 if (srcType is NumberDataViewType)
                 {
-                    if (srcType == NumberDataViewType.R4)
+                    if (srcType == NumberDataViewType.Single)
                         return Sng.MeanVarOneColumnFunctionBuilder.Create(column, host, srcType, cursor.GetGetter<Single>(srcIndex));
-                    if (srcType == NumberDataViewType.R8)
+                    if (srcType == NumberDataViewType.Double)
                         return Dbl.MeanVarOneColumnFunctionBuilder.Create(column, host, srcType, cursor.GetGetter<Double>(srcIndex));
                 }
                 if (srcType is VectorType vectorType && vectorType.IsKnownSize && vectorType.ItemType is NumberDataViewType)
                 {
-                    if (vectorType.ItemType == NumberDataViewType.R4)
+                    if (vectorType.ItemType == NumberDataViewType.Single)
                         return Sng.MeanVarVecColumnFunctionBuilder.Create(column, host, vectorType, cursor.GetGetter<VBuffer<Single>>(srcIndex));
-                    if (vectorType.ItemType == NumberDataViewType.R8)
+                    if (vectorType.ItemType == NumberDataViewType.Double)
                         return Dbl.MeanVarVecColumnFunctionBuilder.Create(column, host, vectorType, cursor.GetGetter<VBuffer<Double>>(srcIndex));
                 }
                 throw host.ExceptUserArg(nameof(column), "Wrong column type for column {0}. Expected: R4, R8, Vec<R4, n> or Vec<R8, n>. Got: {1}.", column.InputColumnName, srcType.ToString());
@@ -1048,16 +1048,16 @@ namespace Microsoft.ML.Transforms.Normalizers
 
                 if (srcType is NumberDataViewType)
                 {
-                    if (srcType == NumberDataViewType.R4)
+                    if (srcType == NumberDataViewType.Single)
                         return Sng.BinOneColumnFunctionBuilder.Create(column, host, srcType, cursor.GetGetter<Single>(srcIndex));
-                    if (srcType == NumberDataViewType.R8)
+                    if (srcType == NumberDataViewType.Double)
                         return Dbl.BinOneColumnFunctionBuilder.Create(column, host, srcType, cursor.GetGetter<Double>(srcIndex));
                 }
                 if (srcType is VectorType vectorType && vectorType.IsKnownSize && vectorType.ItemType is NumberDataViewType)
                 {
-                    if (vectorType.ItemType == NumberDataViewType.R4)
+                    if (vectorType.ItemType == NumberDataViewType.Single)
                         return Sng.BinVecColumnFunctionBuilder.Create(column, host, vectorType, cursor.GetGetter<VBuffer<Single>>(srcIndex));
-                    if (vectorType.ItemType == NumberDataViewType.R8)
+                    if (vectorType.ItemType == NumberDataViewType.Double)
                         return Dbl.BinVecColumnFunctionBuilder.Create(column, host, vectorType, cursor.GetGetter<VBuffer<Double>>(srcIndex));
                 }
                 throw host.ExceptParam(nameof(column), "Wrong column type for column {0}. Expected: R4, R8, Vec<R4, n> or Vec<R8, n>. Got: {1}.", column.InputColumnName, srcType.ToString());
@@ -1107,16 +1107,16 @@ namespace Microsoft.ML.Transforms.Normalizers
 
                 if (srcType is NumberDataViewType)
                 {
-                    if (srcType == NumberDataViewType.R4)
+                    if (srcType == NumberDataViewType.Single)
                         return Sng.SupervisedBinOneColumnFunctionBuilder.Create(column, host, srcIndex, labelColumnId, cursor);
-                    if (srcType == NumberDataViewType.R8)
+                    if (srcType == NumberDataViewType.Double)
                         return Dbl.SupervisedBinOneColumnFunctionBuilder.Create(column, host, srcIndex, labelColumnId, cursor);
                 }
                 if (srcType is VectorType vectorType && vectorType.ItemType is NumberDataViewType)
                 {
-                    if (vectorType.ItemType == NumberDataViewType.R4)
+                    if (vectorType.ItemType == NumberDataViewType.Single)
                         return Sng.SupervisedBinVecColumnFunctionBuilder.Create(column, host, srcIndex, labelColumnId, cursor);
-                    if (vectorType.ItemType == NumberDataViewType.R8)
+                    if (vectorType.ItemType == NumberDataViewType.Double)
                         return Dbl.SupervisedBinVecColumnFunctionBuilder.Create(column, host, srcIndex, labelColumnId, cursor);
                 }
 

@@ -28,7 +28,7 @@ namespace Microsoft.Data.DataView
         /// </summary>
         /// <remarks>
         /// Code should not assume that a <see cref="RawType"/> uniquely identifiers a <see cref="DataViewType"/>.
-        /// For example, most practical instances of ML.NET's KeyType and <see cref="NumberDataViewType.U4"/> will have a
+        /// For example, most practical instances of ML.NET's KeyType and <see cref="NumberDataViewType.UInt32"/> will have a
         /// <see cref="RawType"/> of <see cref="uint"/>, but both are very different in the types of information conveyed in that number.
         /// </remarks>
         public Type RawType { get; }
@@ -112,7 +112,7 @@ namespace Microsoft.Data.DataView
         }
 
         private static volatile NumberDataViewType _instI1;
-        public static NumberDataViewType I1
+        public static NumberDataViewType SByte
         {
             get
             {
@@ -123,7 +123,7 @@ namespace Microsoft.Data.DataView
         }
 
         private static volatile NumberDataViewType _instU1;
-        public static NumberDataViewType U1
+        public static NumberDataViewType Byte
         {
             get
             {
@@ -134,7 +134,7 @@ namespace Microsoft.Data.DataView
         }
 
         private static volatile NumberDataViewType _instI2;
-        public static NumberDataViewType I2
+        public static NumberDataViewType Int16
         {
             get
             {
@@ -145,7 +145,7 @@ namespace Microsoft.Data.DataView
         }
 
         private static volatile NumberDataViewType _instU2;
-        public static NumberDataViewType U2
+        public static NumberDataViewType UInt16
         {
             get
             {
@@ -156,7 +156,7 @@ namespace Microsoft.Data.DataView
         }
 
         private static volatile NumberDataViewType _instI4;
-        public static NumberDataViewType I4
+        public static NumberDataViewType Int32
         {
             get
             {
@@ -167,7 +167,7 @@ namespace Microsoft.Data.DataView
         }
 
         private static volatile NumberDataViewType _instU4;
-        public static NumberDataViewType U4
+        public static NumberDataViewType UInt32
         {
             get
             {
@@ -178,7 +178,7 @@ namespace Microsoft.Data.DataView
         }
 
         private static volatile NumberDataViewType _instI8;
-        public static NumberDataViewType I8
+        public static NumberDataViewType Int64
         {
             get
             {
@@ -189,7 +189,7 @@ namespace Microsoft.Data.DataView
         }
 
         private static volatile NumberDataViewType _instU8;
-        public static NumberDataViewType U8
+        public static NumberDataViewType UInt64
         {
             get
             {
@@ -200,7 +200,7 @@ namespace Microsoft.Data.DataView
         }
 
         private static volatile NumberDataViewType _instUG;
-        public static NumberDataViewType UG
+        public static NumberDataViewType DataViewRowId
         {
             get
             {
@@ -211,7 +211,7 @@ namespace Microsoft.Data.DataView
         }
 
         private static volatile NumberDataViewType _instR4;
-        public static NumberDataViewType R4
+        public static NumberDataViewType Single
         {
             get
             {
@@ -222,7 +222,7 @@ namespace Microsoft.Data.DataView
         }
 
         private static volatile NumberDataViewType _instR8;
-        public static NumberDataViewType R8
+        public static NumberDataViewType Double
         {
             get
             {
@@ -231,8 +231,6 @@ namespace Microsoft.Data.DataView
                     _instR8;
             }
         }
-
-        public static NumberDataViewType Float => R4;
 
         public override bool Equals(DataViewType other)
         {

@@ -76,11 +76,11 @@ namespace Microsoft.ML.Data
         {
             var score = schema.GetUniqueColumn(MetadataUtils.Const.ScoreValueKind.Score);
             var scoreType = score.Type as VectorType;
-            if (scoreType == null || scoreType.Size < 2 || scoreType.ItemType != NumberDataViewType.Float)
+            if (scoreType == null || scoreType.Size < 2 || scoreType.ItemType != NumberDataViewType.Single)
                 throw Host.ExceptSchemaMismatch(nameof(schema), "score", score.Name, "vector of two or more items of type float", scoreType.ToString());
             Host.CheckParam(schema.Label.HasValue, nameof(schema), "Could not find the label column");
             var labelType = schema.Label.Value.Type;
-            if (labelType != NumberDataViewType.Float && labelType.GetKeyCount() <= 0)
+            if (labelType != NumberDataViewType.Single && labelType.GetKeyCount() <= 0)
                 throw Host.ExceptSchemaMismatch(nameof(schema), "label", schema.Label.Value.Name, "float or KeyType", labelType.ToString());
         }
 
@@ -206,13 +206,13 @@ namespace Microsoft.ML.Data
                     }
                     if (hasWeight)
                         overallDvBldr.AddColumn(MetricKinds.ColumnNames.IsWeighted, BooleanDataViewType.Instance, isWeighted.ToArray());
-                    overallDvBldr.AddColumn(AccuracyMicro, NumberDataViewType.R8, microAcc.ToArray());
-                    overallDvBldr.AddColumn(AccuracyMacro, NumberDataViewType.R8, macroAcc.ToArray());
-                    overallDvBldr.AddColumn(LogLoss, NumberDataViewType.R8, logLoss.ToArray());
-                    overallDvBldr.AddColumn(LogLossReduction, NumberDataViewType.R8, logLossRed.ToArray());
+                    overallDvBldr.AddColumn(AccuracyMicro, NumberDataViewType.Double, microAcc.ToArray());
+                    overallDvBldr.AddColumn(AccuracyMacro, NumberDataViewType.Double, macroAcc.ToArray());
+                    overallDvBldr.AddColumn(LogLoss, NumberDataViewType.Double, logLoss.ToArray());
+                    overallDvBldr.AddColumn(LogLossReduction, NumberDataViewType.Double, logLossRed.ToArray());
                     if (aggregator.UnweightedCounters.OutputTopKAcc > 0)
-                        overallDvBldr.AddColumn(TopKAccuracy, NumberDataViewType.R8, topKAcc.ToArray());
-                    overallDvBldr.AddColumn(PerClassLogLoss, aggregator.GetSlotNames, NumberDataViewType.R8, perClassLogLoss.ToArray());
+                        overallDvBldr.AddColumn(TopKAccuracy, NumberDataViewType.Double, topKAcc.ToArray());
+                    overallDvBldr.AddColumn(PerClassLogLoss, aggregator.GetSlotNames, NumberDataViewType.Double, perClassLogLoss.ToArray());
 
                     var confDvBldr = new ArrayDataViewBuilder(Host);
                     if (hasStrats)
@@ -223,10 +223,10 @@ namespace Microsoft.ML.Data
                     ValueGetter<VBuffer<ReadOnlyMemory<char>>> getSlotNames =
                         (ref VBuffer<ReadOnlyMemory<char>> dst) =>
                             dst = new VBuffer<ReadOnlyMemory<char>>(aggregator.ClassNames.Length, aggregator.ClassNames);
-                    confDvBldr.AddColumn(MetricKinds.ColumnNames.Count, getSlotNames, NumberDataViewType.R8, counts.ToArray());
+                    confDvBldr.AddColumn(MetricKinds.ColumnNames.Count, getSlotNames, NumberDataViewType.Double, counts.ToArray());
 
                     if (hasWeight)
-                        confDvBldr.AddColumn(MetricKinds.ColumnNames.Weight, getSlotNames, NumberDataViewType.R8, weights.ToArray());
+                        confDvBldr.AddColumn(MetricKinds.ColumnNames.Weight, getSlotNames, NumberDataViewType.Double, weights.ToArray());
 
                     var result = new Dictionary<string, IDataView>
                     {
@@ -587,8 +587,8 @@ namespace Microsoft.ML.Data
 
             var key = new KeyType(typeof(uint), _numClasses);
             _types[AssignedCol] = key;
-            _types[LogLossCol] = NumberDataViewType.R8;
-            _types[SortedScoresCol] = new VectorType(NumberDataViewType.R4, _numClasses);
+            _types[LogLossCol] = NumberDataViewType.Double;
+            _types[SortedScoresCol] = new VectorType(NumberDataViewType.Single, _numClasses);
             _types[SortedClassesCol] = new VectorType(key, _numClasses);
         }
 
@@ -616,8 +616,8 @@ namespace Microsoft.ML.Data
             _types = new DataViewType[4];
             var key = new KeyType(typeof(uint), _numClasses);
             _types[AssignedCol] = key;
-            _types[LogLossCol] = NumberDataViewType.R8;
-            _types[SortedScoresCol] = new VectorType(NumberDataViewType.R4, _numClasses);
+            _types[LogLossCol] = NumberDataViewType.Double;
+            _types[SortedScoresCol] = new VectorType(NumberDataViewType.Single, _numClasses);
             _types[SortedClassesCol] = new VectorType(key, _numClasses);
         }
 
@@ -814,10 +814,10 @@ namespace Microsoft.ML.Data
             Host.AssertNonEmpty(LabelCol);
 
             var scoreType = schema[ScoreIndex].Type as VectorType;
-            if (scoreType == null || scoreType.Size < 2 || scoreType.ItemType != NumberDataViewType.Float)
+            if (scoreType == null || scoreType.Size < 2 || scoreType.ItemType != NumberDataViewType.Single)
                 throw Host.ExceptSchemaMismatch(nameof(schema), "score", ScoreCol, "vector of two or more items of type float", scoreType.ToString());
             var labelType = schema[LabelIndex].Type;
-            if (labelType != NumberDataViewType.Float && labelType.GetKeyCount() <= 0)
+            if (labelType != NumberDataViewType.Single && labelType.GetKeyCount() <= 0)
                 throw Host.ExceptSchemaMismatch(nameof(schema), "label", LabelCol, "float or KeyType", labelType.ToString());
         }
     }
@@ -917,7 +917,7 @@ namespace Microsoft.ML.Data
 
             if (_outputPerClass)
             {
-                EvaluateUtils.ReconcileSlotNames<double>(Host, views, MultiClassClassifierEvaluator.PerClassLogLoss, NumberDataViewType.R8,
+                EvaluateUtils.ReconcileSlotNames<double>(Host, views, MultiClassClassifierEvaluator.PerClassLogLoss, NumberDataViewType.Double,
                     def: double.NaN);
                 for (int i = 0; i < overallList.Count; i++)
                 {
@@ -1005,7 +1005,7 @@ namespace Microsoft.ML.Data
             if (labelType is KeyType keyType && (!perInst.Schema[labelCol].HasKeyValues(keyType) || labelType.RawType != typeof(uint)))
             {
                 perInst = LambdaColumnMapper.Create(Host, "ConvertToDouble", perInst, labelName,
-                    labelName, perInst.Schema[labelCol].Type, NumberDataViewType.R8,
+                    labelName, perInst.Schema[labelCol].Type, NumberDataViewType.Double,
                     (in uint src, ref double dst) => dst = src == 0 ? double.NaN : src - 1);
             }
 

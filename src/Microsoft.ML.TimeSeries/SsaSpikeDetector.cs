@@ -261,7 +261,7 @@ namespace Microsoft.ML.TimeSeriesProcessing
 
             if (!inputSchema.TryFindColumn(_args.Source, out var col))
                 throw _host.ExceptSchemaMismatch(nameof(inputSchema), "input", _args.Source);
-            if (col.ItemType != NumberDataViewType.R4)
+            if (col.ItemType != NumberDataViewType.Single)
                 throw _host.ExceptSchemaMismatch(nameof(inputSchema), "input", _args.Source, "float", col.GetTypeString());
 
             var metadata = new List<SchemaShape.Column>() {
@@ -269,7 +269,7 @@ namespace Microsoft.ML.TimeSeriesProcessing
             };
             var resultDic = inputSchema.ToDictionary(x => x.Name);
             resultDic[_args.Name] = new SchemaShape.Column(
-                _args.Name, SchemaShape.Column.VectorKind.Vector, NumberDataViewType.R8, false, new SchemaShape(metadata));
+                _args.Name, SchemaShape.Column.VectorKind.Vector, NumberDataViewType.Double, false, new SchemaShape(metadata));
 
             return new SchemaShape(resultDic.Values);
         }

@@ -148,7 +148,7 @@ namespace Microsoft.ML.Trainers.Online
             return new[]
             {
                 // REVIEW AP is currently not calibrating. Add the probability column after fixing the behavior.
-                new SchemaShape.Column(DefaultColumnNames.Score, SchemaShape.Column.VectorKind.Scalar, NumberDataViewType.R4, false, new SchemaShape(MetadataUtils.GetTrainerOutputMetadata())),
+                new SchemaShape.Column(DefaultColumnNames.Score, SchemaShape.Column.VectorKind.Scalar, NumberDataViewType.Single, false, new SchemaShape(MetadataUtils.GetTrainerOutputMetadata())),
                 new SchemaShape.Column(DefaultColumnNames.PredictedLabel, SchemaShape.Column.VectorKind.Scalar, BooleanDataViewType.Instance, false, new SchemaShape(MetadataUtils.GetTrainerOutputMetadata()))
             };
         }
@@ -169,7 +169,7 @@ namespace Microsoft.ML.Trainers.Online
             if (labelCol.Kind != SchemaShape.Column.VectorKind.Scalar)
                 error();
 
-            if (!labelCol.IsKey && labelCol.ItemType != NumberDataViewType.R4 && labelCol.ItemType != NumberDataViewType.R8 && !(labelCol.ItemType is BooleanDataViewType))
+            if (!labelCol.IsKey && labelCol.ItemType != NumberDataViewType.Single && labelCol.ItemType != NumberDataViewType.Double && !(labelCol.ItemType is BooleanDataViewType))
                 error();
         }
 

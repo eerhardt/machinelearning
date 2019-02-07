@@ -298,7 +298,7 @@ namespace Microsoft.ML.Transforms.FeatureSelection
         }
 
         public static bool IsValidColumnType(DataViewType type)
-            => type == NumberDataViewType.R4 || type == NumberDataViewType.R8 || type is TextDataViewType;
+            => type == NumberDataViewType.Single || type == NumberDataViewType.Double || type is TextDataViewType;
 
         private static CountAggregator GetOneAggregator(DataViewRow row, DataViewType colType, int colSrc)
         {
