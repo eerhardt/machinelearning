@@ -78,7 +78,7 @@ namespace Microsoft.ML.Transforms.Conversions
             // if the output VectorKind is a vector or variable vector then
             // this is the data type of items stored in the vector.
             var isKey = Transformer.ValueColumnType is KeyType;
-            var columnType = (isKey) ? NumberType.U4 :
+            var columnType = (isKey) ? NumberDataViewType.U4 :
                                     Transformer.ValueColumnType.GetItemType();
             var metadataShape = SchemaShape.Create(Transformer.ValueColumnMetadata.Schema);
             foreach (var (outputColumnName, inputColumnName) in _columns)
@@ -160,7 +160,7 @@ namespace Microsoft.ML.Transforms.Conversions
         /// <summary>
         /// Helper function to retrieve the Primitie type given a Type
         /// </summary>
-        internal static PrimitiveType GetPrimitiveType(Type rawType, out bool isVectorType)
+        internal static PrimitiveDataViewType GetPrimitiveType(Type rawType, out bool isVectorType)
         {
             Type type = rawType;
             isVectorType = false;
@@ -195,7 +195,7 @@ namespace Microsoft.ML.Transforms.Conversions
         /// <summary>
         /// Helper function to add a column to an ArrayDataViewBuilder. This handles the case if the type is a string.
         /// </summary>
-        internal static void AddColumnWrapper<T>(ArrayDataViewBuilder builder, string columnName, PrimitiveType primitiveType, T[] values)
+        internal static void AddColumnWrapper<T>(ArrayDataViewBuilder builder, string columnName, PrimitiveDataViewType primitiveType, T[] values)
         {
             if (typeof(T) == typeof(string))
                 builder.AddColumn(columnName, values.Select(x=>x.ToString()).ToArray());
@@ -206,7 +206,7 @@ namespace Microsoft.ML.Transforms.Conversions
         /// <summary>
         /// Helper function to add a column to an ArrayDataViewBuilder. This handles the case if the type is an array of strings.
         /// </summary>
-        internal static void AddColumnWrapper<T>(ArrayDataViewBuilder builder, string columnName, PrimitiveType primitiveType, T[][] values)
+        internal static void AddColumnWrapper<T>(ArrayDataViewBuilder builder, string columnName, PrimitiveDataViewType primitiveType, T[][] values)
         {
             if (typeof(T) == typeof(string))
             {
@@ -330,11 +330,11 @@ namespace Microsoft.ML.Transforms.Conversions
         internal static string KeyColumnName = "Key";
         internal static string ValueColumnName = "Value";
         private ValueMap _valueMap;
-        private Schema.Metadata _valueMetadata;
+        private DataViewSchema.Metadata _valueMetadata;
         private byte[] _dataView;
 
-        public ColumnType ValueColumnType => _valueMap.ValueType;
-        public Schema.Metadata ValueColumnMetadata => _valueMetadata;
+        public DataViewType ValueColumnType => _valueMap.ValueType;
+        public DataViewSchema.Metadata ValueColumnMetadata => _valueMetadata;
 
         private static VersionInfo GetVersionInfo()
         {
@@ -723,10 +723,10 @@ namespace Microsoft.ML.Transforms.Conversions
         private static IDataTransform Create(IHostEnvironment env, ModelLoadContext ctx, IDataView input)
             => Create(env, ctx).MakeDataTransform(input);
 
-        private static IRowMapper Create(IHostEnvironment env, ModelLoadContext ctx, Schema inputSchema)
+        private static IRowMapper Create(IHostEnvironment env, ModelLoadContext ctx, DataViewSchema inputSchema)
             => Create(env, ctx).MakeRowMapper(inputSchema);
 
-        protected static PrimitiveType GetPrimitiveType(Type rawType, out bool isVectorType)
+        protected static PrimitiveDataViewType GetPrimitiveType(Type rawType, out bool isVectorType)
         {
             Type type = rawType;
             isVectorType = false;
@@ -757,30 +757,30 @@ namespace Microsoft.ML.Transforms.Conversions
         /// </summary>
         private abstract class ValueMap
         {
-            public readonly ColumnType KeyType;
-            public readonly ColumnType ValueType;
+            public readonly DataViewType KeyType;
+            public readonly DataViewType ValueType;
 
-            public ValueMap(ColumnType keyType, ColumnType valueType)
+            public ValueMap(DataViewType keyType, DataViewType valueType)
             {
                 KeyType = keyType;
                 ValueType = valueType;
             }
 
-            public static ValueMap Create(ColumnType keyType, ColumnType valueType, Schema.Metadata valueMetadata)
+            public static ValueMap Create(DataViewType keyType, DataViewType valueType, DataViewSchema.Metadata valueMetadata)
             {
-                Func<ColumnType, ColumnType, Schema.Metadata, ValueMap> del = CreateValueMapInvoke<int, int>;
+                Func<DataViewType, DataViewType, DataViewSchema.Metadata, ValueMap> del = CreateValueMapInvoke<int, int>;
                 var meth = del.Method.GetGenericMethodDefinition().MakeGenericMethod(keyType.RawType, valueType.RawType);
                 return (ValueMap)meth.Invoke(null, new object[] { keyType, valueType, valueMetadata });
             }
 
-            private static ValueMap CreateValueMapInvoke<TKey, TValue>(ColumnType keyType,
-                                                                                ColumnType valueType,
-                                                                                Schema.Metadata valueMetadata)
+            private static ValueMap CreateValueMapInvoke<TKey, TValue>(DataViewType keyType,
+                                                                                DataViewType valueType,
+                                                                                DataViewSchema.Metadata valueMetadata)
                 => new ValueMap<TKey, TValue>(keyType, valueType, valueMetadata);
 
-            public abstract void Train(IHostEnvironment env, RowCursor cursor);
+            public abstract void Train(IHostEnvironment env, DataViewRowCursor cursor);
 
-            public abstract Delegate GetGetter(Row input, int index);
+            public abstract Delegate GetGetter(DataViewRow input, int index);
 
             public abstract IDataView GetDataView(IHostEnvironment env);
         }
@@ -792,7 +792,7 @@ namespace Microsoft.ML.Transforms.Conversions
         {
             private Dictionary<TKey, TValue> _mapping;
             private TValue _missingValue;
-            private Schema.Metadata _valueMetadata;
+            private DataViewSchema.Metadata _valueMetadata;
 
             private Dictionary<TKey, TValue> CreateDictionary()
             {
@@ -801,7 +801,7 @@ namespace Microsoft.ML.Transforms.Conversions
                 return new Dictionary<TKey, TValue>();
             }
 
-            public ValueMap(ColumnType keyType, ColumnType valueType, Schema.Metadata valueMetadata)
+            public ValueMap(DataViewType keyType, DataViewType valueType, DataViewSchema.Metadata valueMetadata)
                 : base(keyType, valueType)
             {
                 _mapping = CreateDictionary();
@@ -811,7 +811,7 @@ namespace Microsoft.ML.Transforms.Conversions
             /// <summary>
             /// Generates the mapping based on the IDataView
             /// </summary>
-            public override void Train(IHostEnvironment env, RowCursor cursor)
+            public override void Train(IHostEnvironment env, DataViewRowCursor cursor)
             {
                 // Validate that the conversion is supported for non-vector types
                 bool identity;
@@ -826,7 +826,7 @@ namespace Microsoft.ML.Transforms.Conversions
                     // empty string, the returned value will be the new missing value.
                     // NOTE this will return NA for R4 and R8 types.
                     if (Microsoft.ML.Data.Conversion.Conversions.Instance.TryGetStandardConversion<ReadOnlyMemory<char>, TValue>(
-                                                                        TextType.Instance,
+                                                                        TextDataViewType.Instance,
                                                                         ValueType,
                                                                         out conv,
                                                                         out identity))
@@ -865,7 +865,7 @@ namespace Microsoft.ML.Transforms.Conversions
                     return _missingValue;
             }
 
-            public override Delegate GetGetter(Row input, int index)
+            public override Delegate GetGetter(DataViewRow input, int index)
             {
                 if (input.Schema[index].Type is VectorType)
                 {
@@ -968,23 +968,23 @@ namespace Microsoft.ML.Transforms.Conversions
             return new BinaryLoader(env, new BinaryLoader.Arguments(), strm);
         }
 
-        private protected override IRowMapper MakeRowMapper(Schema schema)
+        private protected override IRowMapper MakeRowMapper(DataViewSchema schema)
         {
             return new Mapper(this, schema, _valueMap, _valueMetadata, ColumnPairs);
         }
 
         private sealed class Mapper : OneToOneMapperBase
         {
-            private readonly Schema _inputSchema;
+            private readonly DataViewSchema _inputSchema;
             private readonly ValueMap _valueMap;
-            private readonly Schema.Metadata _valueMetadata;
+            private readonly DataViewSchema.Metadata _valueMetadata;
             private readonly (string outputColumnName, string inputColumnName)[] _columns;
             private readonly ValueMappingTransformer _parent;
 
             internal Mapper(ValueMappingTransformer transform,
-                            Schema inputSchema,
+                            DataViewSchema inputSchema,
                             ValueMap valueMap,
-                            Schema.Metadata valueMetadata,
+                            DataViewSchema.Metadata valueMetadata,
                             (string outputColumnName, string inputColumnName)[] columns)
                 : base(transform.Host.Register(nameof(Mapper)), transform, inputSchema)
             {
@@ -995,7 +995,7 @@ namespace Microsoft.ML.Transforms.Conversions
                 _parent = transform;
             }
 
-            protected override Delegate MakeGetter(Row input, int iinfo, Func<int, bool> activeOutput, out Action disposer)
+            protected override Delegate MakeGetter(DataViewRow input, int iinfo, Func<int, bool> activeOutput, out Action disposer)
             {
                 Host.AssertValue(input);
                 Host.Assert(0 <= iinfo && iinfo < _columns.Length);
@@ -1004,9 +1004,9 @@ namespace Microsoft.ML.Transforms.Conversions
                 return _valueMap.GetGetter(input, ColMapNewToOld[iinfo]);
             }
 
-            protected override Schema.DetachedColumn[] GetOutputColumnsCore()
+            protected override DataViewSchema.DetachedColumn[] GetOutputColumnsCore()
             {
-                var result = new Schema.DetachedColumn[_columns.Length];
+                var result = new DataViewSchema.DetachedColumn[_columns.Length];
                 for (int i = 0; i < _columns.Length; i++)
                 {
                     if (_inputSchema[_columns[i].inputColumnName].Type is VectorType && _valueMap.ValueType is VectorType)
@@ -1014,7 +1014,7 @@ namespace Microsoft.ML.Transforms.Conversions
                     var colType = _valueMap.ValueType;
                     if (_inputSchema[_columns[i].inputColumnName].Type is VectorType)
                         colType = new VectorType(ColumnTypeExtensions.PrimitiveTypeFromType(_valueMap.ValueType.GetItemType().RawType));
-                    result[i] = new Schema.DetachedColumn(_columns[i].outputColumnName, colType, _valueMetadata);
+                    result[i] = new DataViewSchema.DetachedColumn(_columns[i].outputColumnName, colType, _valueMetadata);
                 }
                 return result;
             }

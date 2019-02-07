@@ -79,7 +79,7 @@ namespace Microsoft.ML.Calibrator
             FeatureColumn = TrainerUtils.MakeR4VecFeature(featureColumn);
             PredictedLabel = new SchemaShape.Column(DefaultColumnNames.PredictedLabel,
                 SchemaShape.Column.VectorKind.Scalar,
-                BoolType.Instance,
+                BooleanDataViewType.Instance,
                 false,
                 new SchemaShape(MetadataUtils.GetTrainerOutputMetadata()));
 
@@ -116,7 +116,7 @@ namespace Microsoft.ML.Calibrator
             var outColumns = inputSchema.ToDictionary(x => x.Name);
             outColumns[DefaultColumnNames.Probability] = new SchemaShape.Column(DefaultColumnNames.Probability,
                 SchemaShape.Column.VectorKind.Scalar,
-                NumberType.R4,
+                NumberDataViewType.R4,
                 false,
                 new SchemaShape(MetadataUtils.GetTrainerOutputMetadata(true)));
 
@@ -194,7 +194,7 @@ namespace Microsoft.ML.Calibrator
 
         string ISingleFeaturePredictionTransformer<TICalibrator>.FeatureColumn => DefaultColumnNames.Score;
 
-        ColumnType ISingleFeaturePredictionTransformer<TICalibrator>.FeatureColumnType => NumberType.Float;
+        DataViewType ISingleFeaturePredictionTransformer<TICalibrator>.FeatureColumnType => NumberDataViewType.Float;
 
         TICalibrator IPredictionTransformer<TICalibrator>.Model => _calibrator;
 
@@ -211,7 +211,7 @@ namespace Microsoft.ML.Calibrator
             ctx.SaveModel(_calibrator, @"Calibrator");
         }
 
-        private protected override IRowMapper MakeRowMapper(Schema schema) => new Mapper<TICalibrator>(this, _calibrator, schema);
+        private protected override IRowMapper MakeRowMapper(DataViewSchema schema) => new Mapper<TICalibrator>(this, _calibrator, schema);
 
         protected VersionInfo GetVersionInfo()
         {
@@ -231,7 +231,7 @@ namespace Microsoft.ML.Calibrator
             private int _scoreColIndex;
             private CalibratorTransformer<TCalibrator> _parent;
 
-            internal Mapper(CalibratorTransformer<TCalibrator> parent, TCalibrator calibrator, Schema inputSchema) :
+            internal Mapper(CalibratorTransformer<TCalibrator> parent, TCalibrator calibrator, DataViewSchema inputSchema) :
                 base(parent.Host, inputSchema, parent)
             {
                 _calibrator = calibrator;
@@ -247,15 +247,15 @@ namespace Microsoft.ML.Calibrator
 
             public override void Save(ModelSaveContext ctx) => _parent.Save(ctx);
 
-            protected override Schema.DetachedColumn[] GetOutputColumnsCore()
+            protected override DataViewSchema.DetachedColumn[] GetOutputColumnsCore()
             {
                 return new[]
                 {
-                    new Schema.DetachedColumn(DefaultColumnNames.Probability, NumberType.Float, null)
+                    new DataViewSchema.DetachedColumn(DefaultColumnNames.Probability, NumberDataViewType.Float, null)
                 };
             }
 
-            protected override Delegate MakeGetter(Row input, int iinfo, Func<int, bool> activeOutput, out Action disposer)
+            protected override Delegate MakeGetter(DataViewRow input, int iinfo, Func<int, bool> activeOutput, out Action disposer)
             {
                 Host.AssertValue(input);
                 disposer = null;

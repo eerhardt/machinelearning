@@ -1316,7 +1316,7 @@ namespace Microsoft.ML.Trainers.FastTree
                 return _dataset;
             }
 
-            private static int AddColumnIfNeeded(Schema.Column? info, List<int> toTranspose)
+            private static int AddColumnIfNeeded(DataViewSchema.Column? info, List<int> toTranspose)
             {
                 if (!info.HasValue)
                     return -1;
@@ -1327,7 +1327,7 @@ namespace Microsoft.ML.Trainers.FastTree
                 return idx;
             }
 
-            private ValueMapper<VBuffer<T1>, VBuffer<T2>> GetCopier<T1, T2>(ColumnType itemType1, ColumnType itemType2)
+            private ValueMapper<VBuffer<T1>, VBuffer<T2>> GetCopier<T1, T2>(DataViewType itemType1, DataViewType itemType2)
             {
                 var conv = Conversions.Instance.GetStandardConversion<T1, T2>(itemType1, itemType2, out bool identity);
                 if (identity)
@@ -1431,7 +1431,7 @@ namespace Microsoft.ML.Trainers.FastTree
 
                                     // Perhaps we should change the binning to just work over singles.
                                     VBuffer<double> doubleTemp = default(VBuffer<double>);
-                                    var copier = GetCopier<Float, Double>(NumberType.Float, NumberType.R8);
+                                    var copier = GetCopier<Float, Double>(NumberDataViewType.Float, NumberDataViewType.R8);
                                     int iFeature = 0;
                                     pch.SetHeader(new ProgressHeader("features"), e => e.SetProgress(0, iFeature, features.Length));
                                     while (cursor.MoveNext())
@@ -1500,7 +1500,7 @@ namespace Microsoft.ML.Trainers.FastTree
                                 VBuffer<double> doubleTemp = default(VBuffer<double>);
 
                                 int[] binnedValues = new int[numExamples];
-                                var copier = GetCopier<Float, Double>(NumberType.Float, NumberType.R8);
+                                var copier = GetCopier<Float, Double>(NumberDataViewType.Float, NumberDataViewType.R8);
                                 int iFeature = 0;
                                 if (CategoricalSplit && CategoricalFeatureIndices != null)
                                 {
@@ -2833,11 +2833,11 @@ namespace Microsoft.ML.Trainers.FastTree
 
         protected abstract uint VerCategoricalSplitSerialized { get; }
 
-        protected internal readonly ColumnType InputType;
-        ColumnType IValueMapper.InputType => InputType;
+        protected internal readonly DataViewType InputType;
+        DataViewType IValueMapper.InputType => InputType;
 
-        protected readonly ColumnType OutputType;
-        ColumnType IValueMapper.OutputType => OutputType;
+        protected readonly DataViewType OutputType;
+        DataViewType IValueMapper.OutputType => OutputType;
 
         bool ICanSavePfa.CanSavePfa => true;
 
@@ -2875,8 +2875,8 @@ namespace Microsoft.ML.Trainers.FastTree
             MaxSplitFeatIdx = trainedEnsemble.GetMaxFeatureIndex();
             Contracts.Assert(NumFeatures > MaxSplitFeatIdx);
 
-            InputType = new VectorType(NumberType.Float, NumFeatures);
-            OutputType = NumberType.Float;
+            InputType = new VectorType(NumberDataViewType.Float, NumFeatures);
+            OutputType = NumberDataViewType.Float;
         }
 
         protected TreeEnsembleModelParameters(IHostEnvironment env, string name, ModelLoadContext ctx, VersionInfo ver)
@@ -2913,8 +2913,8 @@ namespace Microsoft.ML.Trainers.FastTree
             // TLC >= 3.0 supposed to be independent of any predictor specific
             // tricks.
 
-            InputType = new VectorType(NumberType.Float, NumFeatures);
-            OutputType = NumberType.Float;
+            InputType = new VectorType(NumberDataViewType.Float, NumFeatures);
+            OutputType = NumberDataViewType.Float;
         }
 
         [BestFriend]
@@ -3283,7 +3283,7 @@ namespace Microsoft.ML.Trainers.FastTree
             return TrainedEnsemble.GetTreeAt(treeId).GetLeaf(in features, ref path);
         }
 
-        Row ICanGetSummaryAsIRow.GetSummaryIRowOrNull(RoleMappedSchema schema)
+        DataViewRow ICanGetSummaryAsIRow.GetSummaryIRowOrNull(RoleMappedSchema schema)
         {
             var names = default(VBuffer<ReadOnlyMemory<char>>);
             MetadataUtils.GetSlotNames(schema, RoleMappedSchema.ColumnRole.Feature, NumFeatures, ref names);
@@ -3293,12 +3293,12 @@ namespace Microsoft.ML.Trainers.FastTree
             var weights = default(VBuffer<Single>);
             ((IHaveFeatureWeights)this).GetFeatureWeights(ref weights);
             var builder = new MetadataBuilder();
-            builder.Add<VBuffer<float>>("Gains", new VectorType(NumberType.R4, NumFeatures), weights.CopyTo, metaBuilder.GetMetadata());
+            builder.Add<VBuffer<float>>("Gains", new VectorType(NumberDataViewType.R4, NumFeatures), weights.CopyTo, metaBuilder.GetMetadata());
 
             return MetadataUtils.MetadataAsRow(builder.GetMetadata());
         }
 
-        Row ICanGetSummaryAsIRow.GetStatsIRowOrNull(RoleMappedSchema schema)
+        DataViewRow ICanGetSummaryAsIRow.GetStatsIRowOrNull(RoleMappedSchema schema)
         {
             return null;
         }

@@ -211,9 +211,9 @@ namespace Microsoft.ML.Internal.Calibration
         private readonly IValueMapper _mapper;
         private readonly IFeatureContributionMapper _featureContribution;
 
-        ColumnType IValueMapper.InputType => _mapper.InputType;
-        ColumnType IValueMapper.OutputType => _mapper.OutputType;
-        ColumnType IValueMapperDist.DistType => NumberType.Float;
+        DataViewType IValueMapper.InputType => _mapper.InputType;
+        DataViewType IValueMapper.OutputType => _mapper.OutputType;
+        DataViewType IValueMapperDist.DistType => NumberDataViewType.Float;
         bool ICanSavePfa.CanSavePfa => (_mapper as ICanSavePfa)?.CanSavePfa == true;
 
         public FeatureContributionCalculator FeatureContributionCalculator => new FeatureContributionCalculator(this);
@@ -227,7 +227,7 @@ namespace Microsoft.ML.Internal.Calibration
 
             _mapper = SubPredictor as IValueMapper;
             Host.Check(_mapper != null, "The predictor does not implement IValueMapper");
-            Host.Check(_mapper.OutputType == NumberType.Float, "The output type of the predictor is expected to be float");
+            Host.Check(_mapper.OutputType == NumberDataViewType.Float, "The output type of the predictor is expected to be float");
 
             _featureContribution = predictor as IFeatureContributionMapper;
         }
@@ -524,8 +524,8 @@ namespace Microsoft.ML.Internal.Calibration
 
             public ISchemaBindableMapper Bindable => _parent;
             public RoleMappedSchema InputRoleMappedSchema => _predictor.InputRoleMappedSchema;
-            public Schema InputSchema => _predictor.InputSchema;
-            public Schema OutputSchema { get; }
+            public DataViewSchema InputSchema => _predictor.InputSchema;
+            public DataViewSchema OutputSchema { get; }
 
             public Bound(IHostEnvironment env, SchemaBindableCalibratedPredictor parent, RoleMappedSchema schema)
             {
@@ -537,7 +537,7 @@ namespace Microsoft.ML.Internal.Calibration
                 if (!_predictor.OutputSchema.TryGetColumnIndex(MetadataUtils.Const.ScoreValueKind.Score, out _scoreCol))
                     throw env.Except("Predictor does not output a score");
                 var scoreType = _predictor.OutputSchema[_scoreCol].Type;
-                env.Check(scoreType is NumberType);
+                env.Check(scoreType is NumberDataViewType);
                 OutputSchema = ScoreSchemaFactory.CreateBinaryClassificationSchema();
             }
 
@@ -556,7 +556,7 @@ namespace Microsoft.ML.Internal.Calibration
                 return _predictor.GetInputColumnRoles();
             }
 
-            public Row GetRow(Row input, Func<int, bool> predicate)
+            public DataViewRow GetRow(DataViewRow input, Func<int, bool> predicate)
             {
                 Func<int, bool> predictorPredicate = col => false;
                 for (int i = 0; i < OutputSchema.Count; i++)
@@ -581,14 +581,14 @@ namespace Microsoft.ML.Internal.Calibration
                 return new SimpleRow(OutputSchema, predictorRow, getters);
             }
 
-            private Delegate GetPredictorGetter<T>(Row input, int col)
+            private Delegate GetPredictorGetter<T>(DataViewRow input, int col)
             {
                 return input.GetGetter<T>(col);
             }
 
-            private Delegate GetProbGetter(Row input)
+            private Delegate GetProbGetter(DataViewRow input)
             {
-                var scoreGetter = RowCursorUtils.GetGetterAs<Single>(NumberType.R4, input, _scoreCol);
+                var scoreGetter = RowCursorUtils.GetGetterAs<Single>(NumberDataViewType.R4, input, _scoreCol);
                 ValueGetter<Single> probGetter =
                     (ref Single dst) =>
                     {
@@ -736,9 +736,9 @@ namespace Microsoft.ML.Internal.Calibration
                 return false;
             }
             var type = outputSchema[scoreCol].Type;
-            if (type != NumberType.Float)
+            if (type != NumberDataViewType.Float)
             {
-                ch.Info("Not training a calibrator because the predictor output is {0}, but expected to be {1}.", type, NumberType.R4);
+                ch.Info("Not training a calibrator because the predictor output is {0}, but expected to be {1}.", type, NumberDataViewType.R4);
                 return false;
             }
             return true;
@@ -824,15 +824,15 @@ namespace Microsoft.ML.Internal.Calibration
                 ch.Info("Training calibrator.");
 
                 var cols = weightCol > -1 ?
-                    new Schema.Column[] { scored.Schema[labelCol], scored.Schema[scoreCol], scored.Schema[weightCol] } :
-                    new Schema.Column[] { scored.Schema[labelCol], scored.Schema[scoreCol] };
+                    new DataViewSchema.Column[] { scored.Schema[labelCol], scored.Schema[scoreCol], scored.Schema[weightCol] } :
+                    new DataViewSchema.Column[] { scored.Schema[labelCol], scored.Schema[scoreCol] };
 
                 using (var cursor = scored.GetRowCursor(cols))
                 {
                     var labelGetter = RowCursorUtils.GetLabelGetter(cursor, labelCol);
-                    var scoreGetter = RowCursorUtils.GetGetterAs<Single>(NumberType.R4, cursor, scoreCol);
+                    var scoreGetter = RowCursorUtils.GetGetterAs<Single>(NumberDataViewType.R4, cursor, scoreCol);
                     ValueGetter<Single> weightGetter = weightCol == -1 ? (ref float dst) => dst = 1 :
-                        RowCursorUtils.GetGetterAs<Single>(NumberType.R4, cursor, weightCol);
+                        RowCursorUtils.GetGetterAs<Single>(NumberDataViewType.R4, cursor, weightCol);
 
                     int num = 0;
                     while (cursor.MoveNext())

@@ -67,7 +67,7 @@ namespace Microsoft.ML.Transforms
             LambdaTransform.SaveCustomTransformer(_host, ctx, _contractName);
         }
 
-        public Schema GetOutputSchema(Schema inputSchema)
+        public DataViewSchema GetOutputSchema(DataViewSchema inputSchema)
         {
             _host.CheckValue(inputSchema, nameof(inputSchema));
             var mapper = MakeRowMapper(inputSchema);
@@ -80,23 +80,23 @@ namespace Microsoft.ML.Transforms
             return new RowToRowMapperTransform(_host, input, MakeRowMapper(input.Schema), MakeRowMapper);
         }
 
-        public IRowToRowMapper GetRowToRowMapper(Schema inputSchema)
+        public IRowToRowMapper GetRowToRowMapper(DataViewSchema inputSchema)
         {
             _host.CheckValue(inputSchema, nameof(inputSchema));
             var simplerMapper = MakeRowMapper(inputSchema);
             return new RowToRowMapperTransform(_host, new EmptyDataView(_host, inputSchema), simplerMapper, MakeRowMapper);
         }
 
-        private IRowMapper MakeRowMapper(Schema schema) => new Mapper(this, schema);
+        private IRowMapper MakeRowMapper(DataViewSchema schema) => new Mapper(this, schema);
 
         private sealed class Mapper : IRowMapper
         {
             private readonly IHost _host;
-            private readonly Schema _inputSchema;
+            private readonly DataViewSchema _inputSchema;
             private readonly CustomMappingTransformer<TSrc, TDst> _parent;
             private readonly TypedCursorable<TSrc> _typedSrc;
 
-            public Mapper(CustomMappingTransformer<TSrc, TDst> parent, Schema inputSchema)
+            public Mapper(CustomMappingTransformer<TSrc, TDst> parent, DataViewSchema inputSchema)
             {
                 Contracts.AssertValue(parent);
                 Contracts.AssertValue(inputSchema);
@@ -109,7 +109,7 @@ namespace Microsoft.ML.Transforms
                 _typedSrc = TypedCursorable<TSrc>.Create(_host, emptyDataView, false, _parent.InputSchemaDefinition);
             }
 
-            Delegate[] IRowMapper.CreateGetters(Row input, Func<int, bool> activeOutput, out Action disposer)
+            Delegate[] IRowMapper.CreateGetters(DataViewRow input, Func<int, bool> activeOutput, out Action disposer)
             {
                 disposer = null;
                 // If no outputs are active, we short-circuit to empty array of getters.
@@ -145,7 +145,7 @@ namespace Microsoft.ML.Transforms
                 return result;
             }
 
-            private Delegate GetDstGetter<T>(Row input, int colIndex, Action refreshAction)
+            private Delegate GetDstGetter<T>(DataViewRow input, int colIndex, Action refreshAction)
             {
                 var getter = input.GetGetter<T>(colIndex);
                 ValueGetter<T> combinedGetter = (ref T dst) =>
@@ -167,11 +167,11 @@ namespace Microsoft.ML.Transforms
                 return col => false;
             }
 
-            Schema.DetachedColumn[] IRowMapper.GetOutputColumns()
+            DataViewSchema.DetachedColumn[] IRowMapper.GetOutputColumns()
             {
                 var dstRow = new DataViewConstructionUtils.InputRow<TDst>(_host, _parent.AddedSchema);
                 // All the output columns of dstRow are our outputs.
-                return Enumerable.Range(0, dstRow.Schema.Count).Select(x => new Schema.DetachedColumn(dstRow.Schema[x])).ToArray();
+                return Enumerable.Range(0, dstRow.Schema.Count).Select(x => new DataViewSchema.DetachedColumn(dstRow.Schema[x])).ToArray();
             }
 
             public void Save(ModelSaveContext ctx)

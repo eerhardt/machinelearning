@@ -34,7 +34,7 @@ namespace Microsoft.ML.TimeSeriesProcessing
             StateRef.InitState(this, Host);
         }
 
-        public override Schema GetOutputSchema(Schema inputSchema)
+        public override DataViewSchema GetOutputSchema(DataViewSchema inputSchema)
         {
             Host.CheckValue(inputSchema, nameof(inputSchema));
 
@@ -42,7 +42,7 @@ namespace Microsoft.ML.TimeSeriesProcessing
                 throw Host.ExceptSchemaMismatch(nameof(inputSchema), "input", InputColumnName);
 
             var colType = inputSchema[col].Type;
-            if (colType != NumberType.R4)
+            if (colType != NumberDataViewType.R4)
                 throw Host.ExceptSchemaMismatch(nameof(inputSchema), "input", InputColumnName, "float", colType.ToString());
 
             return Transform(new EmptyDataView(Host, inputSchema)).Schema;

@@ -48,9 +48,9 @@ namespace Microsoft.ML.Ensemble
 
         private readonly VectorType _inputType;
 
-        ColumnType IValueMapper.InputType => _inputType;
-        ColumnType IValueMapper.OutputType => NumberType.Float;
-        ColumnType IValueMapperDist.DistType => NumberType.Float;
+        DataViewType IValueMapper.InputType => _inputType;
+        DataViewType IValueMapper.OutputType => NumberDataViewType.Float;
+        DataViewType IValueMapperDist.DistType => NumberDataViewType.Float;
 
         public override PredictionKind PredictionKind { get; }
 
@@ -101,15 +101,15 @@ namespace Microsoft.ML.Ensemble
                 }
                 mappers[i] = vmd;
             }
-            return inputType ?? new VectorType(NumberType.Float);
+            return inputType ?? new VectorType(NumberDataViewType.Float);
         }
 
         private bool IsValid(IValueMapperDist mapper, out VectorType inputType)
         {
             if (mapper != null
-                && mapper.InputType is VectorType inVectorType && inVectorType.ItemType == NumberType.Float
-                && mapper.OutputType == NumberType.Float
-                && mapper.DistType == NumberType.Float)
+                && mapper.InputType is VectorType inVectorType && inVectorType.ItemType == NumberDataViewType.Float
+                && mapper.OutputType == NumberDataViewType.Float
+                && mapper.DistType == NumberDataViewType.Float)
             {
                 inputType = inVectorType;
                 return true;

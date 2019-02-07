@@ -120,7 +120,7 @@ namespace Microsoft.ML.LightGBM
             // Check label types.
             var labelCol = data.Schema.Label.Value;
             var labelType = labelCol.Type;
-            if (!(labelType is KeyType || labelType == NumberType.R4))
+            if (!(labelType is KeyType || labelType == NumberDataViewType.R4))
             {
                 throw ch.ExceptParam(nameof(data),
                     $"Label column '{labelCol.Name}' is of type '{labelType}', but must be key or R4.");
@@ -129,7 +129,7 @@ namespace Microsoft.ML.LightGBM
             ch.CheckParam(data.Schema.Group.HasValue, nameof(data), "Need a group column.");
             var groupCol = data.Schema.Group.Value;
             var groupType = groupCol.Type;
-            if (!(groupType == NumberType.U4 || groupType is KeyType))
+            if (!(groupType == NumberDataViewType.U4 || groupType is KeyType))
             {
                 throw ch.ExceptParam(nameof(data),
                    $"Group column '{groupCol.Name}' is of type '{groupType}', but must be U4 or a Key.");
@@ -145,7 +145,7 @@ namespace Microsoft.ML.LightGBM
 
             if (labelCol.Kind != SchemaShape.Column.VectorKind.Scalar)
                 error();
-            if (!labelCol.IsKey && labelCol.ItemType != NumberType.R4)
+            if (!labelCol.IsKey && labelCol.ItemType != NumberDataViewType.R4)
                 error();
         }
 
@@ -172,11 +172,11 @@ namespace Microsoft.ML.LightGBM
         {
             return new[]
            {
-                new SchemaShape.Column(DefaultColumnNames.Score, SchemaShape.Column.VectorKind.Scalar, NumberType.R4, false, new SchemaShape(MetadataUtils.GetTrainerOutputMetadata()))
+                new SchemaShape.Column(DefaultColumnNames.Score, SchemaShape.Column.VectorKind.Scalar, NumberDataViewType.R4, false, new SchemaShape(MetadataUtils.GetTrainerOutputMetadata()))
             };
         }
 
-        protected override RankingPredictionTransformer<LightGbmRankingModelParameters> MakeTransformer(LightGbmRankingModelParameters model, Schema trainSchema)
+        protected override RankingPredictionTransformer<LightGbmRankingModelParameters> MakeTransformer(LightGbmRankingModelParameters model, DataViewSchema trainSchema)
          => new RankingPredictionTransformer<LightGbmRankingModelParameters>(Host, model, trainSchema, FeatureColumn.Name);
 
         public RankingPredictionTransformer<LightGbmRankingModelParameters> Train(IDataView trainData, IDataView validationData = null)

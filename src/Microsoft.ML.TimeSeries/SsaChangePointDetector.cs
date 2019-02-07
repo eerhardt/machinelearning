@@ -201,7 +201,7 @@ namespace Microsoft.ML.TimeSeriesProcessing
         }
 
         // Factory method for SignatureLoadRowMapper.
-        private static IRowMapper Create(IHostEnvironment env, ModelLoadContext ctx, Schema inputSchema)
+        private static IRowMapper Create(IHostEnvironment env, ModelLoadContext ctx, DataViewSchema inputSchema)
             => Create(env, ctx).MakeRowMapper(inputSchema);
     }
 
@@ -282,15 +282,15 @@ namespace Microsoft.ML.TimeSeriesProcessing
 
             if (!inputSchema.TryFindColumn(_args.Source, out var col))
                 throw _host.ExceptSchemaMismatch(nameof(inputSchema), "input", _args.Source);
-            if (col.ItemType != NumberType.R4)
+            if (col.ItemType != NumberDataViewType.R4)
                 throw _host.ExceptSchemaMismatch(nameof(inputSchema), "input", _args.Source, "float", col.GetTypeString());
 
             var metadata = new List<SchemaShape.Column>() {
-                new SchemaShape.Column(MetadataUtils.Kinds.SlotNames, SchemaShape.Column.VectorKind.Vector, TextType.Instance, false)
+                new SchemaShape.Column(MetadataUtils.Kinds.SlotNames, SchemaShape.Column.VectorKind.Vector, TextDataViewType.Instance, false)
             };
             var resultDic = inputSchema.ToDictionary(x => x.Name);
             resultDic[_args.Name] = new SchemaShape.Column(
-                _args.Name, SchemaShape.Column.VectorKind.Vector, NumberType.R8, false, new SchemaShape(metadata));
+                _args.Name, SchemaShape.Column.VectorKind.Vector, NumberDataViewType.R8, false, new SchemaShape(metadata));
 
             return new SchemaShape(resultDic.Values);
         }

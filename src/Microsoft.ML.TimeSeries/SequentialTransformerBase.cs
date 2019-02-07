@@ -256,7 +256,7 @@ namespace Microsoft.ML.TimeSeriesProcessing
 
         internal readonly string InputColumnName;
         internal readonly string OutputColumnName;
-        private protected ColumnType OutputColumnType;
+        private protected DataViewType OutputColumnType;
 
         public bool IsRowToRowMapper => false;
 
@@ -273,7 +273,7 @@ namespace Microsoft.ML.TimeSeriesProcessing
         /// <param name="outputColumnName">The name of the dst column.</param>
         /// <param name="inputColumnName">The name of the input column.</param>
         /// <param name="outputColType"></param>
-        private protected SequentialTransformerBase(IHost host, int windowSize, int initialWindowSize, string outputColumnName, string inputColumnName, ColumnType outputColType)
+        private protected SequentialTransformerBase(IHost host, int windowSize, int initialWindowSize, string outputColumnName, string inputColumnName, DataViewType outputColType)
         {
             Host = host;
             Host.CheckParam(initialWindowSize >= 0, nameof(initialWindowSize), "Must be non-negative.");
@@ -342,9 +342,9 @@ namespace Microsoft.ML.TimeSeriesProcessing
             bs.TryWriteTypeDescription(ctx.Writer.BaseStream, OutputColumnType, out int byteWritten);
         }
 
-        public abstract Schema GetOutputSchema(Schema inputSchema);
+        public abstract DataViewSchema GetOutputSchema(DataViewSchema inputSchema);
 
-        private protected abstract IStatefulRowMapper MakeRowMapper(Schema schema);
+        private protected abstract IStatefulRowMapper MakeRowMapper(DataViewSchema schema);
 
         private protected SequentialDataTransform MakeDataTransform(IDataView input)
         {
@@ -354,12 +354,12 @@ namespace Microsoft.ML.TimeSeriesProcessing
 
         public IDataView Transform(IDataView input) => MakeDataTransform(input);
 
-        public IRowToRowMapper GetRowToRowMapper(Schema inputSchema)
+        public IRowToRowMapper GetRowToRowMapper(DataViewSchema inputSchema)
         {
             throw new InvalidOperationException("Not a RowToRowMapper.");
         }
 
-        IRowToRowMapper IStatefulTransformer.GetStatefulRowToRowMapper(Schema inputSchema)
+        IRowToRowMapper IStatefulTransformer.GetStatefulRowToRowMapper(DataViewSchema inputSchema)
         {
             Host.CheckValue(inputSchema, nameof(inputSchema));
             return new TimeSeriesRowToRowMapperTransform(Host, new EmptyDataView(Host, inputSchema), MakeRowMapper(inputSchema));
@@ -393,7 +393,7 @@ namespace Microsoft.ML.TimeSeriesProcessing
             public void CloneStateInMapper() => _mapper.CloneState();
 
             private static IDataTransform CreateLambdaTransform(IHost host, IDataView input, string inputColumnName,
-                string outputColumnName, Action<TState> initFunction, bool hasBuffer, ColumnType outputColTypeOverride)
+                string outputColumnName, Action<TState> initFunction, bool hasBuffer, DataViewType outputColTypeOverride)
             {
                 var inputSchema = SchemaDefinition.Create(typeof(DataBox<TInput>));
                 inputSchema[0].ColumnName = inputColumnName;
@@ -430,7 +430,7 @@ namespace Microsoft.ML.TimeSeriesProcessing
 
             public override bool CanShuffle { get { return false; } }
 
-            protected override RowCursor GetRowCursorCore(IEnumerable<Schema.Column> columnsNeeded, Random rand = null)
+            protected override DataViewRowCursor GetRowCursorCore(IEnumerable<DataViewSchema.Column> columnsNeeded, Random rand = null)
             {
                 var srcCursor = _transform.GetRowCursor(columnsNeeded, rand);
                 var clone = (SequentialDataTransform)MemberwiseClone();
@@ -447,8 +447,8 @@ namespace Microsoft.ML.TimeSeriesProcessing
             public override long? GetRowCount()
                 => _transform.GetRowCount();
 
-            public override RowCursor[] GetRowCursorSet(IEnumerable<Schema.Column> columnsNeeded, int n, Random rand = null)
-                => new RowCursor[] { GetRowCursorCore(columnsNeeded, rand) };
+            public override DataViewRowCursor[] GetRowCursorSet(IEnumerable<DataViewSchema.Column> columnsNeeded, int n, Random rand = null)
+                => new DataViewRowCursor[] { GetRowCursorCore(columnsNeeded, rand) };
 
             public override void Save(ModelSaveContext ctx)
             {
@@ -460,9 +460,9 @@ namespace Microsoft.ML.TimeSeriesProcessing
                 return new SequentialDataTransform(Contracts.CheckRef(env, nameof(env)).Register("SequentialDataTransform"), _parent, newSource, _mapper);
             }
 
-            public Schema InputSchema => Source.Schema;
+            public DataViewSchema InputSchema => Source.Schema;
 
-            public override Schema OutputSchema => _bindings.Schema;
+            public override DataViewSchema OutputSchema => _bindings.Schema;
 
             public Func<int, bool> GetDependencies(Func<int, bool> predicate)
             {
@@ -474,7 +474,7 @@ namespace Microsoft.ML.TimeSeriesProcessing
                 return col => false;
             }
 
-            public Row GetRow(Row input, Func<int, bool> active)
+            public DataViewRow GetRow(DataViewRow input, Func<int, bool> active)
             {
                 var getters = _mapper.CreateGetters(input, active, out Action disposer);
                 var pingers = _mapper.CreatePinger(input, active, out Action pingerDisposer);
@@ -484,20 +484,20 @@ namespace Microsoft.ML.TimeSeriesProcessing
 
         private sealed class RowImpl : StatefulRow
         {
-            private readonly Schema _schema;
-            private readonly Row _input;
+            private readonly DataViewSchema _schema;
+            private readonly DataViewRow _input;
             private readonly Delegate[] _getters;
             private readonly Action<long> _pinger;
             private readonly Action _disposer;
             private bool _disposed;
 
-            public override Schema Schema => _schema;
+            public override DataViewSchema Schema => _schema;
 
             public override long Position => _input.Position;
 
             public override long Batch => _input.Batch;
 
-            public RowImpl(Schema schema, Row input, Delegate[] getters, Action<long> pinger, Action disposer)
+            public RowImpl(DataViewSchema schema, DataViewRow input, Delegate[] getters, Action<long> pinger, Action disposer)
             {
                 Contracts.CheckValue(schema, nameof(schema));
                 Contracts.CheckValue(input, nameof(input));
@@ -519,7 +519,7 @@ namespace Microsoft.ML.TimeSeriesProcessing
                 base.Dispose(disposing);
             }
 
-            public override ValueGetter<RowId> GetIdGetter()
+            public override ValueGetter<DataViewRowId> GetIdGetter()
                 => _input.GetIdGetter();
 
             public override ValueGetter<T> GetGetter<T>(int col)
@@ -549,14 +549,14 @@ namespace Microsoft.ML.TimeSeriesProcessing
         {
             private readonly SequentialDataTransform _parent;
 
-            public Cursor(IHost host, SequentialDataTransform parent, RowCursor input)
+            public Cursor(IHost host, SequentialDataTransform parent, DataViewRowCursor input)
                 : base(host, input)
             {
                 Ch.Assert(input.Schema.Count == parent.OutputSchema.Count);
                 _parent = parent;
             }
 
-            public override Schema Schema => _parent.OutputSchema;
+            public override DataViewSchema Schema => _parent.OutputSchema;
 
             public override bool IsColumnActive(int col)
             {
@@ -596,7 +596,7 @@ namespace Microsoft.ML.TimeSeriesProcessing
                 loaderAssemblyName: typeof(TimeSeriesRowToRowMapperTransform).Assembly.FullName);
         }
 
-        public override Schema OutputSchema => _bindings.Schema;
+        public override DataViewSchema OutputSchema => _bindings.Schema;
 
         bool ICanSaveOnnx.CanSaveOnnx(OnnxContext ctx) => _mapper is ICanSaveOnnx onnxMapper ? onnxMapper.CanSaveOnnx(ctx) : false;
 
@@ -610,7 +610,7 @@ namespace Microsoft.ML.TimeSeriesProcessing
             _bindings = new ColumnBindings(input.Schema, mapper.GetOutputColumns());
         }
 
-        public static Schema GetOutputSchema(Schema inputSchema, IRowMapper mapper)
+        public static DataViewSchema GetOutputSchema(DataViewSchema inputSchema, IRowMapper mapper)
         {
             Contracts.CheckValue(inputSchema, nameof(inputSchema));
             Contracts.CheckValue(mapper, nameof(mapper));
@@ -697,7 +697,7 @@ namespace Microsoft.ML.TimeSeriesProcessing
             return null;
         }
 
-        protected override RowCursor GetRowCursorCore(IEnumerable<Schema.Column> columnsNeeded, Random rand = null)
+        protected override DataViewRowCursor GetRowCursorCore(IEnumerable<DataViewSchema.Column> columnsNeeded, Random rand = null)
         {
             Func<int, bool> predicateInput;
             var predicate = RowCursorUtils.FromColumnsToPredicate(columnsNeeded, OutputSchema);
@@ -706,7 +706,7 @@ namespace Microsoft.ML.TimeSeriesProcessing
             return new Cursor(Host, Source.GetRowCursor(inputCols, rand), this, active);
         }
 
-        public override RowCursor[] GetRowCursorSet(IEnumerable<Schema.Column> columnsNeeded, int n, Random rand = null)
+        public override DataViewRowCursor[] GetRowCursorSet(IEnumerable<DataViewSchema.Column> columnsNeeded, int n, Random rand = null)
         {
              Host.CheckValueOrNull(rand);
 
@@ -722,7 +722,7 @@ namespace Microsoft.ML.TimeSeriesProcessing
                 inputs = DataViewUtils.CreateSplitCursors(Host, inputs[0], n);
             Host.AssertNonEmpty(inputs);
 
-            var cursors = new RowCursor[inputs.Length];
+            var cursors = new DataViewRowCursor[inputs.Length];
             for (int i = 0; i < inputs.Length; i++)
                 cursors[i] = new Cursor(Host, inputs[i], this, active);
             return cursors;
@@ -755,9 +755,9 @@ namespace Microsoft.ML.TimeSeriesProcessing
             return predicateInput;
         }
 
-        Schema IRowToRowMapper.InputSchema => Source.Schema;
+        DataViewSchema IRowToRowMapper.InputSchema => Source.Schema;
 
-        public Row GetRow(Row input, Func<int, bool> active)
+        public DataViewRow GetRow(DataViewRow input, Func<int, bool> active)
         {
             Host.CheckValue(input, nameof(input));
             Host.CheckValue(active, nameof(active));
@@ -777,7 +777,7 @@ namespace Microsoft.ML.TimeSeriesProcessing
 
         private sealed class StatefulRowImpl : StatefulRow
         {
-            private readonly Row _input;
+            private readonly DataViewRow _input;
             private readonly Delegate[] _getters;
             private readonly Action<long> _pinger;
             private readonly Action _disposer;
@@ -788,10 +788,10 @@ namespace Microsoft.ML.TimeSeriesProcessing
 
             public override long Position => _input.Position;
 
-            public override Schema Schema { get; }
+            public override DataViewSchema Schema { get; }
 
-            public StatefulRowImpl(Row input, TimeSeriesRowToRowMapperTransform parent,
-                Schema schema, Delegate[] getters, Action<long> pinger, Action disposer)
+            public StatefulRowImpl(DataViewRow input, TimeSeriesRowToRowMapperTransform parent,
+                DataViewSchema schema, Delegate[] getters, Action<long> pinger, Action disposer)
             {
                 _input = input;
                 _parent = parent;
@@ -824,7 +824,7 @@ namespace Microsoft.ML.TimeSeriesProcessing
             public override Action<long> GetPinger() =>
                 _pinger as Action<long> ?? throw Contracts.Except("Invalid TValue in GetPinger: '{0}'", typeof(long));
 
-            public override ValueGetter<RowId> GetIdGetter() => _input.GetIdGetter();
+            public override ValueGetter<DataViewRowId> GetIdGetter() => _input.GetIdGetter();
 
             public override bool IsColumnActive(int col)
             {
@@ -844,9 +844,9 @@ namespace Microsoft.ML.TimeSeriesProcessing
             private readonly Action _disposer;
             private bool _disposed;
 
-            public override Schema Schema => _bindings.Schema;
+            public override DataViewSchema Schema => _bindings.Schema;
 
-            public Cursor(IChannelProvider provider, RowCursor input, TimeSeriesRowToRowMapperTransform parent, bool[] active)
+            public Cursor(IChannelProvider provider, DataViewRowCursor input, TimeSeriesRowToRowMapperTransform parent, bool[] active)
                 : base(provider, input)
             {
                 var pred = parent.GetActiveOutputColumns(active);

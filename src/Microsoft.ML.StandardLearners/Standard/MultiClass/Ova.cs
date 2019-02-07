@@ -148,23 +148,23 @@ namespace Microsoft.ML.Trainers
         {
             var lab = data.Schema.Label.Value;
             Host.Assert(!lab.IsHidden);
-            Host.Assert(lab.Type.GetKeyCount() > 0 || lab.Type == NumberType.R4 || lab.Type == NumberType.R8);
+            Host.Assert(lab.Type.GetKeyCount() > 0 || lab.Type == NumberDataViewType.R4 || lab.Type == NumberDataViewType.R8);
 
             if (lab.Type.GetKeyCount() > 0)
             {
                 // Key values are 1-based.
                 uint key = (uint)(cls + 1);
-                return MapLabelsCore(NumberType.U4, (in uint val) => key == val, data);
+                return MapLabelsCore(NumberDataViewType.U4, (in uint val) => key == val, data);
             }
-            if (lab.Type == NumberType.R4)
+            if (lab.Type == NumberDataViewType.R4)
             {
                 float key = cls;
-                return MapLabelsCore(NumberType.R4, (in float val) => key == val, data);
+                return MapLabelsCore(NumberDataViewType.R4, (in float val) => key == val, data);
             }
-            if (lab.Type == NumberType.R8)
+            if (lab.Type == NumberDataViewType.R8)
             {
                 double key = cls;
-                return MapLabelsCore(NumberType.R8, (in double val) => key == val, data);
+                return MapLabelsCore(NumberDataViewType.R8, (in double val) => key == val, data);
             }
 
             throw Host.ExceptNotSupp($"Label column type is not supported by OVA: {lab.Type}");
@@ -241,8 +241,8 @@ namespace Microsoft.ML.Trainers
         /// </para>
         /// </summary>
         public enum OutputFormula { Raw = 0, ProbabilityNormalization = 1, Softmax = 2 };
-        private readonly ColumnType _outputType;
-        private ColumnType DistType => _outputType;
+        private readonly DataViewType _outputType;
+        private DataViewType DistType => _outputType;
         bool ICanSavePfa.CanSavePfa => _impl.CanSavePfa;
 
         [BestFriend]
@@ -263,8 +263,8 @@ namespace Microsoft.ML.Trainers
                 IValueMapperDist ivmd = null;
                 if (outputFormula == OutputFormula.ProbabilityNormalization &&
                     ((ivmd = predictors[0] as IValueMapperDist) == null ||
-                        ivmd.OutputType != NumberType.Float ||
-                        ivmd.DistType != NumberType.Float))
+                        ivmd.OutputType != NumberDataViewType.Float ||
+                        ivmd.DistType != NumberDataViewType.Float))
                 {
                     ch.Warning($"{nameof(Ova.Arguments.UseProbabilities)} specified with {nameof(Ova.Arguments.PredictorType)} that can't produce probabilities.");
                     ivmd = null;
@@ -311,7 +311,7 @@ namespace Microsoft.ML.Trainers
             Host.Assert(Utils.Size(impl.Predictors) > 0);
 
             _impl = impl;
-            _outputType = new VectorType(NumberType.Float, _impl.Predictors.Length);
+            _outputType = new VectorType(NumberDataViewType.Float, _impl.Predictors.Length);
         }
 
         private OvaModelParameters(IHostEnvironment env, ModelLoadContext ctx)
@@ -337,7 +337,7 @@ namespace Microsoft.ML.Trainers
                 _impl = new ImplRaw(predictors);
             }
 
-            _outputType = new VectorType(NumberType.Float, _impl.Predictors.Length);
+            _outputType = new VectorType(NumberDataViewType.Float, _impl.Predictors.Length);
         }
 
         private static OvaModelParameters Create(IHostEnvironment env, ModelLoadContext ctx)
@@ -380,12 +380,12 @@ namespace Microsoft.ML.Trainers
             return _impl.SaveAsPfa(ctx, input);
         }
 
-        ColumnType IValueMapper.InputType
+        DataViewType IValueMapper.InputType
         {
             get { return _impl.InputType; }
         }
 
-        ColumnType IValueMapper.OutputType
+        DataViewType IValueMapper.OutputType
         {
             get { return _outputType; }
         }
@@ -439,7 +439,7 @@ namespace Microsoft.ML.Trainers
 
         private abstract class ImplBase : ISingleCanSavePfa
         {
-            public abstract ColumnType InputType { get; }
+            public abstract DataViewType InputType { get; }
             public abstract IValueMapper[] Predictors { get; }
             public abstract bool CanSavePfa { get; }
             public abstract ValueMapper<VBuffer<float>, VBuffer<float>> GetMapper();
@@ -452,9 +452,9 @@ namespace Microsoft.ML.Trainers
 
                 if (mapper == null)
                     return false;
-                if (mapper.OutputType != NumberType.Float)
+                if (mapper.OutputType != NumberDataViewType.Float)
                     return false;
-                if (!(mapper.InputType is VectorType mapperVectorType)|| mapperVectorType.ItemType != NumberType.Float)
+                if (!(mapper.InputType is VectorType mapperVectorType)|| mapperVectorType.ItemType != NumberDataViewType.Float)
                     return false;
                 if (inputType == null)
                     inputType = mapperVectorType;
@@ -471,7 +471,7 @@ namespace Microsoft.ML.Trainers
 
         private sealed class ImplRaw : ImplBase
         {
-            public override ColumnType InputType { get; }
+            public override DataViewType InputType { get; }
             public override IValueMapper[] Predictors { get; }
             public override bool CanSavePfa { get; }
 
@@ -536,7 +536,7 @@ namespace Microsoft.ML.Trainers
         private sealed class ImplDist : ImplBase
         {
             private readonly IValueMapperDist[] _mappers;
-            public override ColumnType InputType { get; }
+            public override DataViewType InputType { get; }
             public override IValueMapper[] Predictors => _mappers;
             public override bool CanSavePfa { get; }
 
@@ -559,7 +559,7 @@ namespace Microsoft.ML.Trainers
 
             private bool IsValid(IValueMapperDist mapper, ref VectorType inputType)
             {
-                return base.IsValid(mapper, ref inputType) && mapper.DistType == NumberType.Float;
+                return base.IsValid(mapper, ref inputType) && mapper.DistType == NumberDataViewType.Float;
             }
 
             /// <summary>
@@ -644,7 +644,7 @@ namespace Microsoft.ML.Trainers
 
         private sealed class ImplSoftmax : ImplBase
         {
-            public override ColumnType InputType { get; }
+            public override DataViewType InputType { get; }
             public override IValueMapper[] Predictors { get; }
             public override bool CanSavePfa { get; }
 

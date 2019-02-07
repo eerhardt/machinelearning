@@ -105,7 +105,7 @@ namespace Microsoft.ML.Trainers.FastTree
 
             if (labelCol.Kind != SchemaShape.Column.VectorKind.Scalar)
                 error();
-            if (!labelCol.IsKey && labelCol.ItemType != NumberType.R4)
+            if (!labelCol.IsKey && labelCol.ItemType != NumberDataViewType.R4)
                 error();
         }
         protected override float GetMaxLabel()
@@ -455,7 +455,7 @@ namespace Microsoft.ML.Trainers.FastTree
             return headerBuilder.ToString();
         }
 
-        protected override RankingPredictionTransformer<FastTreeRankingModelParameters> MakeTransformer(FastTreeRankingModelParameters model, Schema trainSchema)
+        protected override RankingPredictionTransformer<FastTreeRankingModelParameters> MakeTransformer(FastTreeRankingModelParameters model, DataViewSchema trainSchema)
         => new RankingPredictionTransformer<FastTreeRankingModelParameters>(Host, model, trainSchema, FeatureColumn.Name);
 
         public RankingPredictionTransformer<FastTreeRankingModelParameters> Train(IDataView trainData, IDataView validationData = null)
@@ -465,7 +465,7 @@ namespace Microsoft.ML.Trainers.FastTree
         {
             return new[]
            {
-                new SchemaShape.Column(DefaultColumnNames.Score, SchemaShape.Column.VectorKind.Scalar, NumberType.R4, false, new SchemaShape(MetadataUtils.GetTrainerOutputMetadata()))
+                new SchemaShape.Column(DefaultColumnNames.Score, SchemaShape.Column.VectorKind.Scalar, NumberDataViewType.R4, false, new SchemaShape(MetadataUtils.GetTrainerOutputMetadata()))
             };
         }
 

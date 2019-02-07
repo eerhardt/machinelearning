@@ -116,7 +116,7 @@ namespace Microsoft.ML.Trainers.FastTree
 
         private static SchemaShape.Column MakeLabelColumn(string labelColumn)
         {
-            return new SchemaShape.Column(labelColumn, SchemaShape.Column.VectorKind.Scalar, NumberType.R4, false);
+            return new SchemaShape.Column(labelColumn, SchemaShape.Column.VectorKind.Scalar, NumberDataViewType.R4, false);
         }
 
         protected override ObjectiveFunctionBase ConstructObjFunc(IChannel ch)
@@ -164,7 +164,7 @@ namespace Microsoft.ML.Trainers.FastTree
             return new RegressionTest(ConstructScoreTracker(TrainSet));
         }
 
-        protected override RegressionPredictionTransformer<FastTreeRegressionModelParameters> MakeTransformer(FastTreeRegressionModelParameters model, Schema trainSchema)
+        protected override RegressionPredictionTransformer<FastTreeRegressionModelParameters> MakeTransformer(FastTreeRegressionModelParameters model, DataViewSchema trainSchema)
             => new RegressionPredictionTransformer<FastTreeRegressionModelParameters>(Host, model, trainSchema, FeatureColumn.Name);
 
         public RegressionPredictionTransformer<FastTreeRegressionModelParameters> Train(IDataView trainData, IDataView validationData = null)
@@ -174,7 +174,7 @@ namespace Microsoft.ML.Trainers.FastTree
         {
             return new[]
             {
-                new SchemaShape.Column(DefaultColumnNames.Score, SchemaShape.Column.VectorKind.Scalar, NumberType.R4, false, new SchemaShape(MetadataUtils.GetTrainerOutputMetadata()))
+                new SchemaShape.Column(DefaultColumnNames.Score, SchemaShape.Column.VectorKind.Scalar, NumberDataViewType.R4, false, new SchemaShape(MetadataUtils.GetTrainerOutputMetadata()))
             };
         }
 
