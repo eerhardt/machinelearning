@@ -241,7 +241,7 @@ namespace Microsoft.ML.Transforms.Conversions
                     var builder = new MetadataBuilder();
                     AddMetadata(i, builder);
 
-                    result[i] = new DataViewSchema.DetachedColumn(_parent.ColumnPairs[i].outputColumnName, _types[i], builder.GetMetadata());
+                    result[i] = new DataViewSchema.DetachedColumn(_parent.ColumnPairs[i].outputColumnName, _types[i], builder.GetAnnotations());
                 }
                 return result;
             }
@@ -249,7 +249,7 @@ namespace Microsoft.ML.Transforms.Conversions
             private void AddMetadata(int iinfo, MetadataBuilder builder)
             {
                 InputSchema.TryGetColumnIndex(_infos[iinfo].InputColumnName, out int srcCol);
-                var inputMetadata = InputSchema[srcCol].Metadata;
+                var inputMetadata = InputSchema[srcCol].Annotations;
                 var srcType = _infos[iinfo].TypeSrc;
                 // See if the source has key names.
 
@@ -320,7 +320,7 @@ namespace Microsoft.ML.Transforms.Conversions
                 // Get the source slot names, defaulting to empty text.
                 var namesSlotSrc = default(VBuffer<ReadOnlyMemory<char>>);
 
-                var inputMetadata = InputSchema[_infos[iinfo].InputColumnName].Metadata;
+                var inputMetadata = InputSchema[_infos[iinfo].InputColumnName].Annotations;
                 VectorType typeSlotSrc = null;
                 if (inputMetadata != null)
                     typeSlotSrc = inputMetadata.Schema.GetColumnOrNull(MetadataUtils.Kinds.SlotNames)?.Type as VectorType;

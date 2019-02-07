@@ -186,7 +186,7 @@ namespace Microsoft.ML.Core.Data
                 {
                     // First create the metadata.
                     var mCols = new List<Column>();
-                    foreach (var metaColumn in schema[iCol].Metadata.Schema)
+                    foreach (var metaColumn in schema[iCol].Annotations.Schema)
                     {
                         GetColumnTypeShape(metaColumn.Type, out var mVecKind, out var mItemType, out var mIsKey);
                         mCols.Add(new Column(metaColumn.Name, mVecKind, mItemType, mIsKey));

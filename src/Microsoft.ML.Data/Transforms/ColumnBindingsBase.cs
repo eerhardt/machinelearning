@@ -281,7 +281,7 @@ namespace Microsoft.ML.Data
                     var getter = Utils.MarshalInvoke(GetMetadataGetterDelegate<int>, kvp.Value.RawType, inputBindings, i, kvp.Key);
                     meta.Add(kvp.Key, kvp.Value, getter);
                 }
-                builder.AddColumn(inputBindings.GetColumnName(i), inputBindings.GetColumnType(i), meta.GetMetadata());
+                builder.AddColumn(inputBindings.GetColumnName(i), inputBindings.GetColumnType(i), meta.GetAnnotations());
             }
 
             return builder.GetSchema();
@@ -511,7 +511,7 @@ namespace Microsoft.ML.Data
             bool isSrc;
             int index = MapColumnIndex(out isSrc, col);
             if (isSrc)
-                return Input[index].Metadata.Schema.Select(c => new KeyValuePair<string, DataViewType>(c.Name, c.Type));
+                return Input[index].Annotations.Schema.Select(c => new KeyValuePair<string, DataViewType>(c.Name, c.Type));
             Contracts.Assert(0 <= index && index < InfoCount);
             return GetMetadataTypesCore(index);
         }
@@ -524,7 +524,7 @@ namespace Microsoft.ML.Data
             bool isSrc;
             int index = MapColumnIndex(out isSrc, col);
             if (isSrc)
-                return Input[index].Metadata.Schema.GetColumnOrNull(kind)?.Type;
+                return Input[index].Annotations.Schema.GetColumnOrNull(kind)?.Type;
             Contracts.Assert(0 <= index && index < InfoCount);
             return GetMetadataTypeCore(kind, index);
         }
@@ -537,7 +537,7 @@ namespace Microsoft.ML.Data
             bool isSrc;
             int index = MapColumnIndex(out isSrc, col);
             if (isSrc)
-                Input[index].Metadata.GetValue(kind, ref value);
+                Input[index].Annotations.GetValue(kind, ref value);
             else
             {
                 Contracts.Assert(0 <= index && index < InfoCount);

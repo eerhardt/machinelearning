@@ -369,8 +369,8 @@ namespace Microsoft.ML.Learners
             var colType = new VectorType(NumberDataViewType.Single, Weight.Length);
             var builder = new MetadataBuilder();
             builder.AddPrimitiveValue("Bias", NumberDataViewType.Single, Bias);
-            builder.Add("Weights", colType, (ref VBuffer<float> dst) => Weight.CopyTo(ref dst), subBuilder.GetMetadata());
-            return MetadataUtils.MetadataAsRow(builder.GetMetadata());
+            builder.Add("Weights", colType, (ref VBuffer<float> dst) => Weight.CopyTo(ref dst), subBuilder.GetAnnotations());
+            return MetadataUtils.MetadataAsRow(builder.GetAnnotations());
         }
 
         DataViewRow ICanGetSummaryAsIRow.GetSummaryIRowOrNull(RoleMappedSchema schema) => GetSummaryIRowOrNull(schema);

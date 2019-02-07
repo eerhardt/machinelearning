@@ -312,17 +312,17 @@ namespace Microsoft.ML.Data
                         if (i == scoreColumnIndex)
                         {
                             // Add label names for score column.
-                            meta.Add(partialSchema[i].Metadata, selector: s => s != labelNameKind);
+                            meta.Add(partialSchema[i].Annotations, selector: s => s != labelNameKind);
                             meta.Add(labelNameKind, labelNameType, labelNameGetter);
                         }
                         else
                         {
                             // Copy all existing metadata because this transform only affects score column.
-                            meta.Add(partialSchema[i].Metadata, selector: s => true);
+                            meta.Add(partialSchema[i].Annotations, selector: s => true);
                         }
                         // Instead of appending extra metadata to the existing score column, we create new one because
                         // metadata is read-only.
-                        builder.AddColumn(partialSchema[i].Name, partialSchema[i].Type, meta.GetMetadata());
+                        builder.AddColumn(partialSchema[i].Name, partialSchema[i].Type, meta.GetAnnotations());
                     }
                     return builder.GetSchema();
                 }
@@ -377,7 +377,7 @@ namespace Microsoft.ML.Data
 
             if (trainSchema?.Label == null)
                 return mapper; // We don't even have a label identified in a training schema.
-            var keyType = trainSchema.Label.Value.Metadata.Schema.GetColumnOrNull(MetadataUtils.Kinds.KeyValues)?.Type as VectorType;
+            var keyType = trainSchema.Label.Value.Annotations.Schema.GetColumnOrNull(MetadataUtils.Kinds.KeyValues)?.Type as VectorType;
             if (keyType == null || !CanWrap(mapper, keyType))
                 return mapper;
 
@@ -411,7 +411,7 @@ namespace Microsoft.ML.Data
             var scoreCol = outSchema.GetColumnOrNull(MetadataUtils.Const.ScoreValueKind.Score);
             if (!outSchema.TryGetColumnIndex(MetadataUtils.Const.ScoreValueKind.Score, out scoreIdx))
                 return false; // The mapper doesn't even publish a score column to attach the metadata to.
-            if (outSchema[scoreIdx].Metadata.Schema.GetColumnOrNull(MetadataUtils.Kinds.SlotNames)?.Type != null)
+            if (outSchema[scoreIdx].Annotations.Schema.GetColumnOrNull(MetadataUtils.Kinds.SlotNames)?.Type != null)
                 return false; // The mapper publishes a score column, and already produces its own slot names.
             var scoreType = outSchema[scoreIdx].Type;
 
@@ -427,7 +427,7 @@ namespace Microsoft.ML.Data
             env.Assert(mapper is ISchemaBoundRowMapper);
 
             // Key values from the training schema label, will map to slot names of the score output.
-            var type = trainSchema.Label.Value.Metadata.Schema.GetColumnOrNull(MetadataUtils.Kinds.KeyValues)?.Type;
+            var type = trainSchema.Label.Value.Annotations.Schema.GetColumnOrNull(MetadataUtils.Kinds.KeyValues)?.Type;
             env.AssertValue(type);
             env.Assert(type is VectorType);
 

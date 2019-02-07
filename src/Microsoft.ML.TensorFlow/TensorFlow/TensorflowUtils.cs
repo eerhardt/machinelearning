@@ -17,12 +17,12 @@ namespace Microsoft.ML.Transforms.TensorFlow
     public static class TensorFlowUtils
     {
         /// <summary>
-        /// Key to access operator's type (a string) in <see cref="DataViewSchema.Column.Metadata"/>.
+        /// Key to access operator's type (a string) in <see cref="DataViewSchema.Column.Annotations"/>.
         /// Its value describes the Tensorflow operator that produces this <see cref="DataViewSchema.Column"/>.
         /// </summary>
         public const string TensorflowOperatorTypeKind = "TensorflowOperatorType";
         /// <summary>
-        /// Key to access upstream operators' names (a string array) in <see cref="DataViewSchema.Column.Metadata"/>.
+        /// Key to access upstream operators' names (a string array) in <see cref="DataViewSchema.Column.Annotations"/>.
         /// Its value states operators that the associated <see cref="DataViewSchema.Column"/>'s generator depends on.
         /// </summary>
         public const string TensorflowUpstreamOperatorsKind = "TensorflowUpstreamOperators";
@@ -78,7 +78,7 @@ namespace Microsoft.ML.Transforms.TensorFlow
                         (ref VBuffer<ReadOnlyMemory<char>> value) => { upstreamOperatorNames.CopyTo(ref value); });
                 }
 
-                schemaBuilder.AddColumn(op.Name, columnType, metadataBuilder.GetMetadata());
+                schemaBuilder.AddColumn(op.Name, columnType, metadataBuilder.GetAnnotations());
             }
             return schemaBuilder.GetSchema();
         }
@@ -117,16 +117,16 @@ namespace Microsoft.ML.Transforms.TensorFlow
                 var name = schema[i].Name;
                 var type = schema[i].Type;
 
-                var metadataType = schema[i].Metadata.Schema.GetColumnOrNull(TensorflowOperatorTypeKind)?.Type;
+                var metadataType = schema[i].Annotations.Schema.GetColumnOrNull(TensorflowOperatorTypeKind)?.Type;
                 Contracts.Assert(metadataType != null && metadataType is TextDataViewType);
                 ReadOnlyMemory<char> opType = default;
-                schema[i].Metadata.GetValue(TensorflowOperatorTypeKind, ref opType);
-                metadataType = schema[i].Metadata.Schema.GetColumnOrNull(TensorflowUpstreamOperatorsKind)?.Type;
+                schema[i].Annotations.GetValue(TensorflowOperatorTypeKind, ref opType);
+                metadataType = schema[i].Annotations.Schema.GetColumnOrNull(TensorflowUpstreamOperatorsKind)?.Type;
                 VBuffer<ReadOnlyMemory<char>> inputOps = default;
                 if (metadataType != null)
                 {
                     Contracts.Assert(metadataType.IsKnownSizeVector() && metadataType.GetItemType() is TextDataViewType);
-                    schema[i].Metadata.GetValue(TensorflowUpstreamOperatorsKind, ref inputOps);
+                    schema[i].Annotations.GetValue(TensorflowUpstreamOperatorsKind, ref inputOps);
                 }
 
                 string[] inputOpsResult = inputOps.DenseValues()

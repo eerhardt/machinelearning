@@ -10,48 +10,48 @@ using System.Linq;
 namespace Microsoft.Data.DataView
 {
     /// <summary>
-    /// The class that incrementally builds a <see cref="DataViewSchema.Metadata"/>.
+    /// The class that incrementally builds a <see cref="DataViewSchema.Annotations"/>.
     /// </summary>
     public sealed class MetadataBuilder
     {
-        private readonly List<(string Name, DataViewType Type, Delegate Getter, DataViewSchema.Metadata Metadata)> _items;
+        private readonly List<(string Name, DataViewType Type, Delegate Getter, DataViewSchema.Annotations Annotations)> _items;
 
         public MetadataBuilder()
         {
-            _items = new List<(string Name, DataViewType Type, Delegate Getter, DataViewSchema.Metadata Metadata)>();
+            _items = new List<(string Name, DataViewType Type, Delegate Getter, DataViewSchema.Annotations Annotations)>();
         }
 
         /// <summary>
-        /// Add some columns from <paramref name="metadata"/> into our new metadata, by applying <paramref name="selector"/>
+        /// Add some columns from <paramref name="annotations"/> into our new annotations, by applying <paramref name="selector"/>
         /// to all the names.
         /// </summary>
-        /// <param name="metadata">The metadata row to take values from.</param>
-        /// <param name="selector">The predicate describing which metadata columns to keep.</param>
-        public void Add(DataViewSchema.Metadata metadata, Func<string, bool> selector)
+        /// <param name="annotations">The annotations row to take values from.</param>
+        /// <param name="selector">The predicate describing which annotations columns to keep.</param>
+        public void Add(DataViewSchema.Annotations annotations, Func<string, bool> selector)
         {
-            if (metadata == null)
+            if (annotations == null)
                 return;
 
             if (selector == null)
                 throw new ArgumentNullException(nameof(selector));
 
-            foreach (var column in metadata.Schema)
+            foreach (var column in annotations.Schema)
             {
                 if (selector(column.Name))
-                    _items.Add((column.Name, column.Type, metadata.GetGetterInternal(column.Index), column.Metadata));
+                    _items.Add((column.Name, column.Type, annotations.GetGetterInternal(column.Index), column.Annotations));
             }
         }
 
         /// <summary>
-        /// Add one metadata column, strongly-typed version.
+        /// Add one annotation column, strongly-typed version.
         /// </summary>
         /// <typeparam name="TValue">The type of the value.</typeparam>
-        /// <param name="name">The metadata name.</param>
-        /// <param name="type">The metadata type.</param>
+        /// <param name="name">The annotation name.</param>
+        /// <param name="type">The annotation type.</param>
         /// <param name="getter">The getter delegate.</param>
-        /// <param name="metadata">Metadata of the input column. Note that metadata on a metadata column is somewhat rare
+        /// <param name="annotations">Annotations of the input column. Note that annotations on a annotations column is somewhat rare
         /// except for certain types (for example, slot names for a vector, key values for something of key type).</param>
-        public void Add<TValue>(string name, DataViewType type, ValueGetter<TValue> getter, DataViewSchema.Metadata metadata = null)
+        public void Add<TValue>(string name, DataViewType type, ValueGetter<TValue> getter, DataViewSchema.Annotations annotations = null)
         {
             if (string.IsNullOrEmpty(name))
                 throw new ArgumentNullException(nameof(name));
@@ -62,19 +62,19 @@ namespace Microsoft.Data.DataView
             if (type.RawType != typeof(TValue))
                 throw new ArgumentException($"{nameof(type)}.{nameof(type.RawType)} must be of type '{typeof(TValue).FullName}'.", nameof(type));
 
-            _items.Add((name, type, getter, metadata));
+            _items.Add((name, type, getter, annotations));
         }
 
         /// <summary>
-        /// Add one metadata column, weakly-typed version.
+        /// Add one annotation column, weakly-typed version.
         /// </summary>
-        /// <param name="name">The metadata name.</param>
-        /// <param name="type">The metadata type.</param>
+        /// <param name="name">The annotation name.</param>
+        /// <param name="type">The annotation type.</param>
         /// <param name="getter">The getter delegate that provides the value. Note that the type of the getter is still checked
         /// inside this method.</param>
-        /// <param name="metadata">Metadata of the input column. Note that metadata on a metadata column is somewhat rare
+        /// <param name="annotations">Annotations of the input column. Note that annotations on an annotations column is somewhat rare
         /// except for certain types (for example, slot names for a vector, key values for something of key type).</param>
-        public void Add(string name, DataViewType type, Delegate getter, DataViewSchema.Metadata metadata = null)
+        public void Add(string name, DataViewType type, Delegate getter, DataViewSchema.Annotations annotations = null)
         {
             if (string.IsNullOrEmpty(name))
                 throw new ArgumentNullException(nameof(name));
@@ -83,18 +83,18 @@ namespace Microsoft.Data.DataView
             if (getter == null)
                 throw new ArgumentNullException(nameof(getter));
 
-            Utils.MarshalActionInvoke(AddDelegate<int>, type.RawType, name, type, getter, metadata);
+            Utils.MarshalActionInvoke(AddDelegate<int>, type.RawType, name, type, getter, annotations);
         }
 
         /// <summary>
-        /// Add one metadata column for a primitive value type.
+        /// Add one annotation column for a primitive value type.
         /// </summary>
-        /// <param name="name">The metadata name.</param>
-        /// <param name="type">The metadata type.</param>
-        /// <param name="value">The value of the metadata.</param>
-        /// <param name="metadata">Metadata of the input column. Note that metadata on a metadata column is somewhat rare
+        /// <param name="name">The annotation name.</param>
+        /// <param name="type">The annotation type.</param>
+        /// <param name="value">The value of the annotation.</param>
+        /// <param name="annotations">Annotations of the input column. Note that annotations on an annotations column is somewhat rare
         /// except for certain types (for example, slot names for a vector, key values for something of key type).</param>
-        public void AddPrimitiveValue<TValue>(string name, PrimitiveDataViewType type, TValue value, DataViewSchema.Metadata metadata = null)
+        public void AddPrimitiveValue<TValue>(string name, PrimitiveDataViewType type, TValue value, DataViewSchema.Annotations annotations = null)
         {
             if (string.IsNullOrEmpty(name))
                 throw new ArgumentNullException(nameof(name));
@@ -103,22 +103,22 @@ namespace Microsoft.Data.DataView
             if (type.RawType != typeof(TValue))
                 throw new ArgumentException($"{nameof(type)}.{nameof(type.RawType)} must be of type '{typeof(TValue).FullName}'.", nameof(type));
 
-            Add(name, type, (ref TValue dst) => dst = value, metadata);
+            Add(name, type, (ref TValue dst) => dst = value, annotations);
         }
 
         /// <summary>
-        /// Produce the metadata row that the builder has so far.
+        /// Produce the annotations row that the builder has so far.
         /// Can be called multiple times.
         /// </summary>
-        public DataViewSchema.Metadata GetMetadata()
+        public DataViewSchema.Annotations GetAnnotations()
         {
             var builder = new SchemaBuilder();
             foreach (var item in _items)
-                builder.AddColumn(item.Name, item.Type, item.Metadata);
-            return new DataViewSchema.Metadata(builder.GetSchema(), _items.Select(x => x.Getter).ToArray());
+                builder.AddColumn(item.Name, item.Type, item.Annotations);
+            return new DataViewSchema.Annotations(builder.GetSchema(), _items.Select(x => x.Getter).ToArray());
         }
 
-        private void AddDelegate<TValue>(string name, DataViewType type, Delegate getter, DataViewSchema.Metadata metadata)
+        private void AddDelegate<TValue>(string name, DataViewType type, Delegate getter, DataViewSchema.Annotations annotations)
         {
             Debug.Assert(!string.IsNullOrEmpty(name));
             Debug.Assert(type != null);
@@ -127,7 +127,7 @@ namespace Microsoft.Data.DataView
             var typedGetter = getter as ValueGetter<TValue>;
             if (typedGetter == null)
                 throw new ArgumentException($"{nameof(getter)} must be of type '{typeof(ValueGetter<TValue>).FullName}'", nameof(getter));
-            _items.Add((name, type, typedGetter, metadata));
+            _items.Add((name, type, typedGetter, annotations));
         }
     }
 }

@@ -614,7 +614,7 @@ namespace Microsoft.ML.Transforms.Text
                 {
                     var builder = new MetadataBuilder();
                     AddMetadata(i, builder);
-                    result[i] = new DataViewSchema.DetachedColumn(_parent._columns[i].Name, _types[i], builder.GetMetadata());
+                    result[i] = new DataViewSchema.DetachedColumn(_parent._columns[i].Name, _types[i], builder.GetAnnotations());
                 }
                 return result;
             }

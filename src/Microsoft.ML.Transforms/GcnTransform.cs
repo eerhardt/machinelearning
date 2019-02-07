@@ -354,10 +354,10 @@ namespace Microsoft.ML.Transforms.Projections
                 for (int i = 0; i < _parent.ColumnPairs.Length; i++)
                 {
                     var builder = new MetadataBuilder();
-                    builder.Add(InputSchema[ColMapNewToOld[i]].Metadata, name => name == MetadataUtils.Kinds.SlotNames);
+                    builder.Add(InputSchema[ColMapNewToOld[i]].Annotations, name => name == MetadataUtils.Kinds.SlotNames);
                     ValueGetter<bool> getter = (ref bool dst) => dst = true;
                     builder.Add(MetadataUtils.Kinds.IsNormalized, BooleanDataViewType.Instance, getter);
-                    result[i] = new DataViewSchema.DetachedColumn(_parent.ColumnPairs[i].outputColumnName, _types[i], builder.GetMetadata());
+                    result[i] = new DataViewSchema.DetachedColumn(_parent.ColumnPairs[i].outputColumnName, _types[i], builder.GetAnnotations());
                 }
                 return result;
             }

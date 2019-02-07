@@ -27,7 +27,7 @@ namespace Microsoft.ML.Tests
             var schemaBuilder = new SchemaBuilder();
             schemaBuilder.AddColumn("A", new VectorType(NumberDataViewType.Single, 94));
             schemaBuilder.AddColumn("B", new KeyType(typeof(uint), 17));
-            schemaBuilder.AddColumn("C", NumberDataViewType.Int32, metadataBuilder.GetMetadata());
+            schemaBuilder.AddColumn("C", NumberDataViewType.Int32, metadataBuilder.GetAnnotations());
 
             var shape = SchemaShape.Create(schemaBuilder.GetSchema());
 
@@ -48,7 +48,7 @@ namespace Microsoft.ML.Tests
             Assert.Equal("C", columnC.Name);
             Assert.Equal(NumberDataViewType.Int32, columnC.Type);
 
-            var metaC = columnC.Metadata;
+            var metaC = columnC.Annotations;
             Assert.Single(metaC.Schema);
 
             float mValue = -1;

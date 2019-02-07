@@ -570,7 +570,7 @@ namespace Microsoft.ML.Data
                     if (_isIdentity)
                     {
                         var inputCol = _inputSchema[SrcIndices[0]];
-                        return new DataViewSchema.DetachedColumn(_columnInfo.Name, inputCol.Type, inputCol.Metadata);
+                        return new DataViewSchema.DetachedColumn(_columnInfo.Name, inputCol.Type, inputCol.Annotations);
                     }
 
                     var metadata = new MetadataBuilder();
@@ -581,7 +581,7 @@ namespace Microsoft.ML.Data
                     if (_hasCategoricals)
                         metadata.Add(MetadataUtils.Kinds.CategoricalSlotRanges, _categoricalRangeType, (ValueGetter<VBuffer<int>>)GetCategoricalSlotRanges);
 
-                    return new DataViewSchema.DetachedColumn(_columnInfo.Name, OutputType, metadata.GetMetadata());
+                    return new DataViewSchema.DetachedColumn(_columnInfo.Name, OutputType, metadata.GetAnnotations());
                 }
 
                 private void GetIsNormalized(ref bool value) => value = _isNormalized;
@@ -642,7 +642,7 @@ namespace Microsoft.ML.Data
                         Contracts.Assert(vectorTypeSrc.IsKnownSize);
                         VectorType typeNames = null;
 
-                        var inputMetadata = _inputSchema[colSrc].Metadata;
+                        var inputMetadata = _inputSchema[colSrc].Annotations;
                         if (inputMetadata != null && inputMetadata.Schema.TryGetColumnIndex(MetadataUtils.Kinds.SlotNames, out int idx))
                             typeNames = inputMetadata.Schema[idx].Type as VectorType;
 

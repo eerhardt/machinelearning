@@ -211,7 +211,7 @@ namespace Microsoft.ML.Learners
             var featureLength = CurrentWeights.Length - BiasCount;
             var namesSpans = VBufferUtils.CreateEmpty<ReadOnlyMemory<char>>(featureLength);
             if (featureCol.HasSlotNames(featureLength))
-                featureCol.Metadata.GetValue(MetadataUtils.Kinds.SlotNames, ref namesSpans);
+                featureCol.Annotations.GetValue(MetadataUtils.Kinds.SlotNames, ref namesSpans);
             Host.Assert(namesSpans.Length == featureLength);
 
             // Inverse mapping of non-zero weight slots.

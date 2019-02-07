@@ -156,10 +156,10 @@ namespace Microsoft.ML.Data.IO
                 _getSrc = cursor.GetGetter<VBuffer<T>>(source);
                 VectorType typeNames;
                 if (type.IsKnownSize
-                    && (typeNames = cursor.Schema[source].Metadata.Schema.GetColumnOrNull(MetadataUtils.Kinds.SlotNames)?.Type as VectorType) != null
+                    && (typeNames = cursor.Schema[source].Annotations.Schema.GetColumnOrNull(MetadataUtils.Kinds.SlotNames)?.Type as VectorType) != null
                     && typeNames.Size == type.Size && typeNames.ItemType is TextDataViewType)
                 {
-                    cursor.Schema[source].Metadata.GetValue(MetadataUtils.Kinds.SlotNames, ref _slotNames);
+                    cursor.Schema[source].Annotations.GetValue(MetadataUtils.Kinds.SlotNames, ref _slotNames);
                     Contracts.Check(_slotNames.Length == typeNames.Size, "Unexpected slot names length");
                 }
                 _slotCount = type.Size;
@@ -410,7 +410,7 @@ namespace Microsoft.ML.Data.IO
                     }
                     if (!vectorType.IsKnownSize)
                         continue;
-                    var typeNames = data.Schema[cols[i]].Metadata.Schema.GetColumnOrNull(MetadataUtils.Kinds.SlotNames)?.Type as VectorType;
+                    var typeNames = data.Schema[cols[i]].Annotations.Schema.GetColumnOrNull(MetadataUtils.Kinds.SlotNames)?.Type as VectorType;
                     if (typeNames != null && typeNames.Size == vectorType.Size && typeNames.ItemType is TextDataViewType)
                         hasHeader = true;
                 }

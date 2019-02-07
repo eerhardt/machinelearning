@@ -298,7 +298,7 @@ namespace Microsoft.ML.Learners
 
             var names = default(VBuffer<ReadOnlyMemory<char>>);
 
-            featureColumn.Metadata.GetValue(MetadataUtils.Kinds.SlotNames, ref names);
+            featureColumn.Annotations.GetValue(MetadataUtils.Kinds.SlotNames, ref names);
             _env.Assert(names.Length > 0, "FeatureColumn has no metadata.");
 
             ReadOnlySpan<float> stdErrorValues = _coeffStdError.Value.GetValues();
@@ -413,7 +413,7 @@ namespace Microsoft.ML.Learners
             }
         }
 
-        internal DataViewSchema.Metadata MakeStatisticsMetadata(LinearBinaryModelParameters parent, RoleMappedSchema schema, in VBuffer<ReadOnlyMemory<char>> names)
+        internal DataViewSchema.Annotations MakeStatisticsMetadata(LinearBinaryModelParameters parent, RoleMappedSchema schema, in VBuffer<ReadOnlyMemory<char>> names)
         {
             _env.AssertValueOrNull(parent);
             _env.AssertValue(schema);
@@ -426,10 +426,10 @@ namespace Microsoft.ML.Learners
             builder.AddPrimitiveValue("AIC", NumberDataViewType.Single, 2 * _paramCount + _deviance);
 
             if (parent == null)
-                return builder.GetMetadata();
+                return builder.GetAnnotations();
 
             if (!TryGetBiasStatistics(parent.Statistics, parent.Bias, out float biasStdErr, out float biasZScore, out float biasPValue))
-                return builder.GetMetadata();
+                return builder.GetAnnotations();
 
             var biasEstimate = parent.Bias;
             builder.AddPrimitiveValue("BiasEstimate", NumberDataViewType.Single, biasEstimate);
@@ -448,7 +448,7 @@ namespace Microsoft.ML.Learners
 
             var subMetaBuilder = new MetadataBuilder();
             subMetaBuilder.AddSlotNames(stdErr.Length, getSlotNames);
-            var subMeta = subMetaBuilder.GetMetadata();
+            var subMeta = subMetaBuilder.GetAnnotations();
             var colType = new VectorType(NumberDataViewType.Single, stdErr.Length);
 
             builder.Add("Estimate", colType, (ref VBuffer<float> dst) => estimate.CopyTo(ref dst), subMeta);
@@ -456,7 +456,7 @@ namespace Microsoft.ML.Learners
             builder.Add("ZScore", colType, (ref VBuffer<float> dst) => zScore.CopyTo(ref dst), subMeta);
             builder.Add("PValue", colType, (ref VBuffer<float> dst) => pValue.CopyTo(ref dst), subMeta);
 
-            return builder.GetMetadata();
+            return builder.GetAnnotations();
         }
 
         private string DecorateProbabilityString(float probZ)

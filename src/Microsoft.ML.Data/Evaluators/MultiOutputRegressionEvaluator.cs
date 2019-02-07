@@ -397,8 +397,8 @@ namespace Microsoft.ML.Data
 
         private readonly VectorType _labelType;
         private readonly VectorType _scoreType;
-        private readonly DataViewSchema.Metadata _labelMetadata;
-        private readonly DataViewSchema.Metadata _scoreMetadata;
+        private readonly DataViewSchema.Annotations _labelMetadata;
+        private readonly DataViewSchema.Annotations _scoreMetadata;
 
         public MultiOutputRegressionPerInstanceEvaluator(IHostEnvironment env, DataViewSchema schema, string scoreCol,
             string labelCol)
@@ -541,7 +541,7 @@ namespace Microsoft.ML.Data
         }
 
         private void CheckInputColumnTypes(DataViewSchema schema, out VectorType labelType, out VectorType scoreType,
-            out DataViewSchema.Metadata labelMetadata, out DataViewSchema.Metadata scoreMetadata)
+            out DataViewSchema.Annotations labelMetadata, out DataViewSchema.Annotations scoreMetadata)
         {
             Host.AssertNonEmpty(ScoreCol);
             Host.AssertNonEmpty(LabelCol);
@@ -553,7 +553,7 @@ namespace Microsoft.ML.Data
             var slotNamesType = new VectorType(TextDataViewType.Instance, t.Size);
             var builder = new MetadataBuilder();
             builder.AddSlotNames(t.Size, CreateSlotNamesGetter(schema, LabelIndex, labelType.Size, "True"));
-            labelMetadata = builder.GetMetadata();
+            labelMetadata = builder.GetAnnotations();
 
             t = schema[ScoreIndex].Type as VectorType;
             if (t == null || !t.IsKnownSize || t.ItemType != NumberDataViewType.Single)
@@ -568,7 +568,7 @@ namespace Microsoft.ML.Data
             builder.Add(MetadataUtils.Kinds.ScoreValueKind, TextDataViewType.Instance, getter);
             ValueGetter<uint> uintGetter = GetScoreColumnSetId(schema);
             builder.Add(MetadataUtils.Kinds.ScoreColumnSetId, MetadataUtils.ScoreColumnSetIdType, uintGetter);
-            scoreMetadata = builder.GetMetadata();
+            scoreMetadata = builder.GetAnnotations();
         }
 
         private ValueGetter<uint> GetScoreColumnSetId(DataViewSchema schema)
@@ -592,11 +592,11 @@ namespace Microsoft.ML.Data
 
         private ValueGetter<VBuffer<ReadOnlyMemory<char>>> CreateSlotNamesGetter(DataViewSchema schema, int column, int length, string prefix)
         {
-            var type = schema[column].Metadata.Schema.GetColumnOrNull(MetadataUtils.Kinds.SlotNames)?.Type;
+            var type = schema[column].Annotations.Schema.GetColumnOrNull(MetadataUtils.Kinds.SlotNames)?.Type;
             if (type != null && type is TextDataViewType)
             {
                 return
-                    (ref VBuffer<ReadOnlyMemory<char>> dst) => schema[column].Metadata.GetValue(MetadataUtils.Kinds.SlotNames, ref dst);
+                    (ref VBuffer<ReadOnlyMemory<char>> dst) => schema[column].Annotations.GetValue(MetadataUtils.Kinds.SlotNames, ref dst);
             }
             return
                 (ref VBuffer<ReadOnlyMemory<char>> dst) =>

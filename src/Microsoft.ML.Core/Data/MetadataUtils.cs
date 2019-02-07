@@ -233,13 +233,13 @@ namespace Microsoft.ML.Data
             colMax = -1;
             for (int col = 0; col < schema.Count; col++)
             {
-                var columnType = schema[col].Metadata.Schema.GetColumnOrNull(metadataKind)?.Type;
+                var columnType = schema[col].Annotations.Schema.GetColumnOrNull(metadataKind)?.Type;
                 if (!(columnType is KeyType) || columnType.RawType != typeof(uint))
                     continue;
                 if (filterFunc != null && !filterFunc(schema, col))
                     continue;
                 uint value = 0;
-                schema[col].Metadata.GetValue(metadataKind, ref value);
+                schema[col].Annotations.GetValue(metadataKind, ref value);
                 if (max < value)
                 {
                     max = value;
@@ -258,11 +258,11 @@ namespace Microsoft.ML.Data
         {
             for (int col = 0; col < schema.Count; col++)
             {
-                var columnType = schema[col].Metadata.Schema.GetColumnOrNull(metadataKind)?.Type;
+                var columnType = schema[col].Annotations.Schema.GetColumnOrNull(metadataKind)?.Type;
                 if (columnType is KeyType && columnType.RawType == typeof(uint))
                 {
                     uint val = 0;
-                    schema[col].Metadata.GetValue(metadataKind, ref val);
+                    schema[col].Annotations.GetValue(metadataKind, ref val);
                     if (val == value)
                         yield return col;
                 }
@@ -278,11 +278,11 @@ namespace Microsoft.ML.Data
         {
             for (int col = 0; col < schema.Count; col++)
             {
-                var columnType = schema[col].Metadata.Schema.GetColumnOrNull(metadataKind)?.Type;
+                var columnType = schema[col].Annotations.Schema.GetColumnOrNull(metadataKind)?.Type;
                 if (columnType is TextDataViewType)
                 {
                     ReadOnlyMemory<char> val = default;
-                    schema[col].Metadata.GetValue(metadataKind, ref val);
+                    schema[col].Annotations.GetValue(metadataKind, ref val);
                     if (ReadOnlyMemoryUtils.EqualsStr(value, val))
                         yield return col;
                 }
@@ -311,7 +311,7 @@ namespace Microsoft.ML.Data
             if (vectorSize == 0)
                 return false;
 
-            var metaColumn = column.Metadata.Schema.GetColumnOrNull(Kinds.SlotNames);
+            var metaColumn = column.Annotations.Schema.GetColumnOrNull(Kinds.SlotNames);
             return
                 metaColumn != null
                 && metaColumn.Value.Type is VectorType vectorType
@@ -320,10 +320,10 @@ namespace Microsoft.ML.Data
         }
 
         public static void GetSlotNames(this DataViewSchema.Column column, ref VBuffer<ReadOnlyMemory<char>> slotNames)
-            => column.Metadata.GetValue(Kinds.SlotNames, ref slotNames);
+            => column.Annotations.GetValue(Kinds.SlotNames, ref slotNames);
 
         public static void GetKeyValues<TValue>(this DataViewSchema.Column column, ref VBuffer<TValue> keyValues)
-            => column.Metadata.GetValue(Kinds.KeyValues, ref keyValues);
+            => column.Annotations.GetValue(Kinds.KeyValues, ref keyValues);
 
         [BestFriend]
         internal static void GetSlotNames(RoleMappedSchema schema, RoleMappedSchema.ColumnRole role, int vectorSize, ref VBuffer<ReadOnlyMemory<char>> slotNames)
@@ -335,7 +335,7 @@ namespace Microsoft.ML.Data
             if (list?.Count != 1 || !schema.Schema[list[0].Index].HasSlotNames(vectorSize))
                 VBufferUtils.Resize(ref slotNames, vectorSize, 0);
             else
-                schema.Schema[list[0].Index].Metadata.GetValue(Kinds.SlotNames, ref slotNames);
+                schema.Schema[list[0].Index].Annotations.GetValue(Kinds.SlotNames, ref slotNames);
         }
 
         [BestFriend]
@@ -346,7 +346,7 @@ namespace Microsoft.ML.Data
             if (keyCount == 0)
                 return false;
 
-            var metaColumn = column.Metadata.Schema.GetColumnOrNull(Kinds.KeyValues);
+            var metaColumn = column.Annotations.Schema.GetColumnOrNull(Kinds.KeyValues);
             return
                 metaColumn != null
                 && metaColumn.Value.Type is VectorType vectorType
@@ -367,12 +367,12 @@ namespace Microsoft.ML.Data
         /// </summary>
         public static bool IsNormalized(this DataViewSchema.Column column)
         {
-            var metaColumn = column.Metadata.Schema.GetColumnOrNull((Kinds.IsNormalized));
+            var metaColumn = column.Annotations.Schema.GetColumnOrNull((Kinds.IsNormalized));
             if (metaColumn == null || !(metaColumn.Value.Type is BooleanDataViewType))
                 return false;
 
             bool value = default;
-            column.Metadata.GetValue(Kinds.IsNormalized, ref value);
+            column.Annotations.GetValue(Kinds.IsNormalized, ref value);
             return value;
         }
 
@@ -423,10 +423,10 @@ namespace Microsoft.ML.Data
             Contracts.CheckValue(schema, nameof(schema));
             Contracts.CheckValue(type, nameof(type));
 
-            var metadataType = schema[col].Metadata.Schema.GetColumnOrNull(kind)?.Type;
+            var metadataType = schema[col].Annotations.Schema.GetColumnOrNull(kind)?.Type;
             if (!type.Equals(metadataType))
                 return false;
-            schema[col].Metadata.GetValue(kind, ref value);
+            schema[col].Annotations.GetValue(kind, ref value);
             return true;
         }
 
@@ -449,11 +449,11 @@ namespace Microsoft.ML.Data
             if (!(schema[colIndex].Type is VectorType vecType && vecType.Size > 0))
                 return isValid;
 
-            var type = schema[colIndex].Metadata.Schema.GetColumnOrNull(Kinds.CategoricalSlotRanges)?.Type;
+            var type = schema[colIndex].Annotations.Schema.GetColumnOrNull(Kinds.CategoricalSlotRanges)?.Type;
             if (type?.RawType == typeof(VBuffer<int>))
             {
                 VBuffer<int> catIndices = default(VBuffer<int>);
-                schema[colIndex].Metadata.GetValue(Kinds.CategoricalSlotRanges, ref catIndices);
+                schema[colIndex].Annotations.GetValue(Kinds.CategoricalSlotRanges, ref catIndices);
                 VBufferUtils.Densify(ref catIndices);
                 int columnSlotsCount = vecType.Size;
                 if (catIndices.Length > 0 && catIndices.Length % 2 == 0 && catIndices.Length <= columnSlotsCount * 2)
@@ -515,9 +515,9 @@ namespace Microsoft.ML.Data
 
         private sealed class MetadataRow : DataViewRow
         {
-            private readonly DataViewSchema.Metadata _metadata;
+            private readonly DataViewSchema.Annotations _metadata;
 
-            public MetadataRow(DataViewSchema.Metadata metadata)
+            public MetadataRow(DataViewSchema.Annotations metadata)
             {
                 Contracts.AssertValue(metadata);
                 _metadata = metadata;
@@ -532,12 +532,12 @@ namespace Microsoft.ML.Data
         }
 
         /// <summary>
-        /// Presents a <see cref="DataViewSchema.Metadata"/> as a an <see cref="DataViewRow"/>.
+        /// Presents a <see cref="DataViewSchema.Annotations"/> as a an <see cref="DataViewRow"/>.
         /// </summary>
         /// <param name="metadata">The metadata to wrap.</param>
         /// <returns>A row that wraps an input metadata.</returns>
         [BestFriend]
-        internal static DataViewRow MetadataAsRow(DataViewSchema.Metadata metadata)
+        internal static DataViewRow MetadataAsRow(DataViewSchema.Annotations metadata)
         {
             Contracts.CheckValue(metadata, nameof(metadata));
             return new MetadataRow(metadata);

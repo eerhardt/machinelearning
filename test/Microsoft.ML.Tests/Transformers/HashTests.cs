@@ -82,17 +82,17 @@ namespace Microsoft.ML.Tests.Transformers
         {
             VBuffer<ReadOnlyMemory<char>> keys = default;
             var column = result.Schema["HashA"];
-            Assert.Equal(column.Metadata.Schema.Single().Name, MetadataUtils.Kinds.KeyValues);
+            Assert.Equal(column.Annotations.Schema.Single().Name, MetadataUtils.Kinds.KeyValues);
             column.GetKeyValues(ref keys);
             Assert.Equal(keys.Items().Select(x => x.Value.ToString()), new string[2] { "2.5", "3.5" });
 
             column = result.Schema["HashAUnlim"];
-            Assert.Equal(column.Metadata.Schema.Single().Name, MetadataUtils.Kinds.KeyValues);
+            Assert.Equal(column.Annotations.Schema.Single().Name, MetadataUtils.Kinds.KeyValues);
             column.GetKeyValues(ref keys);
             Assert.Equal(keys.Items().Select(x => x.Value.ToString()), new string[2] { "2.5", "3.5" });
 
             column = result.Schema["HashAUnlimOrdered"];
-            Assert.Equal(column.Metadata.Schema.Single().Name, MetadataUtils.Kinds.KeyValues);
+            Assert.Equal(column.Annotations.Schema.Single().Name, MetadataUtils.Kinds.KeyValues);
             column.GetKeyValues(ref keys);
             Assert.Equal(keys.Items().Select(x => x.Value.ToString()), new string[2] { "0:3.5", "1:2.5" });
         }
@@ -130,7 +130,7 @@ namespace Microsoft.ML.Tests.Transformers
 
             var builder = new MetadataBuilder();
             builder.AddPrimitiveValue("Foo", type, val);
-            var inRow = MetadataUtils.MetadataAsRow(builder.GetMetadata());
+            var inRow = MetadataUtils.MetadataAsRow(builder.GetAnnotations());
 
             // First do an unordered hash.
             var info = new HashingEstimator.ColumnInfo("Bar", "Foo", hashBits: bits);
@@ -161,7 +161,7 @@ namespace Microsoft.ML.Tests.Transformers
             var denseVec = new VBuffer<T>(vecLen, Utils.CreateArray(vecLen, val));
             builder = new MetadataBuilder();
             builder.Add("Foo", new VectorType(type, vecLen), (ref VBuffer<T> dst) => denseVec.CopyTo(ref dst));
-            inRow = MetadataUtils.MetadataAsRow(builder.GetMetadata());
+            inRow = MetadataUtils.MetadataAsRow(builder.GetAnnotations());
 
             info = new HashingEstimator.ColumnInfo("Bar", "Foo", hashBits: bits, ordered: false);
             xf = new HashingTransformer(Env, new[] { info });
@@ -195,7 +195,7 @@ namespace Microsoft.ML.Tests.Transformers
             var sparseVec = new VBuffer<T>(10, 3, Utils.CreateArray(3, val), new[] { 0, 3, 7 });
             builder = new MetadataBuilder();
             builder.Add("Foo", new VectorType(type, vecLen), (ref VBuffer<T> dst) => sparseVec.CopyTo(ref dst));
-            inRow = MetadataUtils.MetadataAsRow(builder.GetMetadata());
+            inRow = MetadataUtils.MetadataAsRow(builder.GetAnnotations());
 
             info = new HashingEstimator.ColumnInfo("Bar", "Foo", hashBits: bits, ordered: false);
             xf = new HashingTransformer(Env, new[] { info });

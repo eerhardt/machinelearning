@@ -609,7 +609,7 @@ namespace Microsoft.ML.TimeSeriesProcessing
                 var meta = new MetadataBuilder();
                 meta.AddSlotNames(_parent._outputLength, GetSlotNames);
                 var info = new DataViewSchema.DetachedColumn[1];
-                info[0] = new DataViewSchema.DetachedColumn(_parent.OutputColumnName, new VectorType(NumberDataViewType.Double, _parent._outputLength), meta.GetMetadata());
+                info[0] = new DataViewSchema.DetachedColumn(_parent.OutputColumnName, new VectorType(NumberDataViewType.Double, _parent._outputLength), meta.GetAnnotations());
                 return info;
             }
 

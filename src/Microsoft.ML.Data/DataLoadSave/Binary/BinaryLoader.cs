@@ -661,7 +661,7 @@ namespace Microsoft.ML.Data.IO
                             throw MetadataUtils.ExceptGetMetadata();
                         metadataBuilder.Add(loadedMetadataColumn.Kind, loadedMetadataColumn.Codec.Type, metadataGetter);
                     }
-                    schemaBuilder.AddColumn(loadedColumn.Name, loadedColumn.Type, metadataBuilder.GetMetadata());
+                    schemaBuilder.AddColumn(loadedColumn.Name, loadedColumn.Type, metadataBuilder.GetAnnotations());
                 }
                 else
                     // This case has no metadata.

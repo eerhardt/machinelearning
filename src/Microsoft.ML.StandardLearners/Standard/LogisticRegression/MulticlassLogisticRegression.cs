@@ -124,7 +124,7 @@ namespace Microsoft.ML.Learners
 
             // Try to get the label key values metedata.
             var labelCol = data.Schema.Label.Value;
-            var labelMetadataType = labelCol.Metadata.Schema.GetColumnOrNull(MetadataUtils.Kinds.KeyValues)?.Type;
+            var labelMetadataType = labelCol.Annotations.Schema.GetColumnOrNull(MetadataUtils.Kinds.KeyValues)?.Type;
             if (!(labelMetadataType is VectorType vecType && vecType.ItemType == TextDataViewType.Instance && vecType.Size == _numClasses))
             {
                 _labelNames = null;

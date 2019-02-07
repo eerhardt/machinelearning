@@ -283,14 +283,14 @@ namespace Microsoft.ML.Transforms
                 // Handle group(-key) columns. Those columns are used as keys to partition rows in the input data; specifically,
                 // rows with the same key value will be merged into one row in the output data.
                 foreach (var groupKeyColumnName in _groupColumns)
-                    schemaBuilder.AddColumn(groupKeyColumnName, sourceSchema[groupKeyColumnName].Type, sourceSchema[groupKeyColumnName].Metadata);
+                    schemaBuilder.AddColumn(groupKeyColumnName, sourceSchema[groupKeyColumnName].Type, sourceSchema[groupKeyColumnName].Annotations);
 
                 // Handle aggregated (aka keep) columns.
                 foreach (var groupValueColumnName in _keepColumns)
                 {
                     // Prepare column's metadata.
                     var metadataBuilder = new MetadataBuilder();
-                    metadataBuilder.Add(sourceSchema[groupValueColumnName].Metadata,
+                    metadataBuilder.Add(sourceSchema[groupValueColumnName].Annotations,
                         s => s == MetadataUtils.Kinds.IsNormalized || s == MetadataUtils.Kinds.KeyValues);
 
                     // Prepare column's type.
@@ -299,7 +299,7 @@ namespace Microsoft.ML.Transforms
                     var aggregatedResultType = new VectorType(aggregatedValueType);
 
                     // Add column into output schema.
-                    schemaBuilder.AddColumn(groupValueColumnName, aggregatedResultType, metadataBuilder.GetMetadata());
+                    schemaBuilder.AddColumn(groupValueColumnName, aggregatedResultType, metadataBuilder.GetAnnotations());
                 }
 
                 return schemaBuilder.GetSchema();

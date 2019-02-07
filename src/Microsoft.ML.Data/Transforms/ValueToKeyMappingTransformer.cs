@@ -736,8 +736,8 @@ namespace Microsoft.ML.Transforms.Conversions
                     var builder = new MetadataBuilder();
                     _termMap[i].AddMetadata(builder);
 
-                    builder.Add(InputSchema[colIndex].Metadata, name => name == MetadataUtils.Kinds.SlotNames);
-                    result[i] = new DataViewSchema.DetachedColumn(_parent.ColumnPairs[i].outputColumnName, _types[i], builder.GetMetadata());
+                    builder.Add(InputSchema[colIndex].Annotations, name => name == MetadataUtils.Kinds.SlotNames);
+                    result[i] = new DataViewSchema.DetachedColumn(_parent.ColumnPairs[i].outputColumnName, _types[i], builder.GetAnnotations());
                 }
                 return result;
             }

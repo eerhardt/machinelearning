@@ -179,8 +179,8 @@ namespace Microsoft.ML.Transforms.Conversions
                 for (int i = 0; i < _parent.ColumnPairs.Length; i++)
                 {
                     var meta = new MetadataBuilder();
-                    meta.Add(InputSchema[ColMapNewToOld[i]].Metadata, name => name == MetadataUtils.Kinds.SlotNames);
-                    result[i] = new DataViewSchema.DetachedColumn(_parent.ColumnPairs[i].outputColumnName, _types[i], meta.GetMetadata());
+                    meta.Add(InputSchema[ColMapNewToOld[i]].Annotations, name => name == MetadataUtils.Kinds.SlotNames);
+                    result[i] = new DataViewSchema.DetachedColumn(_parent.ColumnPairs[i].outputColumnName, _types[i], meta.GetAnnotations());
                 }
                 return result;
             }
@@ -232,7 +232,7 @@ namespace Microsoft.ML.Transforms.Conversions
                     // Construct kvMaps.
                     Contracts.Assert(types[iinfo] == null);
                     var typeSrc = schema[ColMapNewToOld[iinfo]].Type;
-                    var typeVals = schema[ColMapNewToOld[iinfo]].Metadata.Schema.GetColumnOrNull(MetadataUtils.Kinds.KeyValues)?.Type;
+                    var typeVals = schema[ColMapNewToOld[iinfo]].Annotations.Schema.GetColumnOrNull(MetadataUtils.Kinds.KeyValues)?.Type;
                     Host.Check(typeVals != null, "Metadata KeyValues does not exist");
                     DataViewType valsItemType = typeVals.GetItemType();
                     DataViewType srcItemType = typeSrc.GetItemType();

@@ -97,11 +97,11 @@ namespace Microsoft.Data.DataView
             public DataViewType Type { get; }
 
             /// <summary>
-            /// The metadata of the column.
+            /// The annotations of the column.
             /// </summary>
-            public Metadata Metadata { get; }
+            public Annotations Annotations { get; }
 
-            internal Column(string name, int index, bool isHidden, DataViewType type, Metadata metadata)
+            internal Column(string name, int index, bool isHidden, DataViewType type, Annotations annotations)
             {
                 if (string.IsNullOrEmpty(name))
                     throw new ArgumentNullException(nameof(name));
@@ -112,14 +112,14 @@ namespace Microsoft.Data.DataView
                 Index = index;
                 IsHidden = isHidden;
                 Type = type ?? throw new ArgumentNullException(nameof(type));
-                Metadata = metadata ?? Metadata.Empty;
+                Annotations = annotations ?? Annotations.Empty;
             }
 
             public override string ToString()
             {
-                var metadataString = (Metadata == null || Metadata.Schema.Count == 0) ?
-                    null : $" {{{string.Join(", ", Metadata.Schema.Select(x => x.Name))}}}";
-                return $"{Name}: {Type}{metadataString}";
+                var annotationsString = (Annotations == null || Annotations.Schema.Count == 0) ?
+                    null : $" {{{string.Join(", ", Annotations.Schema.Select(x => x.Name))}}}";
+                return $"{Name}: {Type}{annotationsString}";
             }
         }
 
@@ -137,21 +137,21 @@ namespace Microsoft.Data.DataView
             /// </summary>
             public DataViewType Type { get; }
             /// <summary>
-            /// The metadata associated with the column.
+            /// The annotations associated with the column.
             /// </summary>
-            public Metadata Metadata { get; }
+            public Annotations Annotations { get; }
 
             /// <summary>
             /// Creates an instance of a <see cref="DetachedColumn"/>.
             /// </summary>
-            public DetachedColumn(string name, DataViewType type, Metadata metadata = null)
+            public DetachedColumn(string name, DataViewType type, Annotations annotations = null)
             {
                 if (string.IsNullOrEmpty(name))
                     throw new ArgumentNullException(nameof(name));
 
                 Name = name;
                 Type = type ?? throw new ArgumentNullException(nameof(type));
-                Metadata = metadata ?? DataViewSchema.Metadata.Empty;
+                Annotations = annotations ?? DataViewSchema.Annotations.Empty;
             }
 
             /// <summary>
@@ -161,35 +161,35 @@ namespace Microsoft.Data.DataView
             {
                 Name = column.Name;
                 Type = column.Type;
-                Metadata = column.Metadata;
+                Annotations = column.Annotations;
             }
         }
 
         /// <summary>
-        /// The metadata of one <see cref="Column"/>.
+        /// The annotations of one <see cref="Column"/>.
         /// </summary>
-        [System.Diagnostics.DebuggerTypeProxy(typeof(MetadataDebuggerProxy))]
-        public sealed class Metadata
+        [System.Diagnostics.DebuggerTypeProxy(typeof(AnnotationsDebuggerProxy))]
+        public sealed class Annotations
         {
             /// <summary>
-            /// Metadata getter delegates. Useful to construct metadata out of other metadata.
+            /// Annotation getter delegates. Useful to construct annotations out of other annotations.
             /// </summary>
             private readonly Delegate[] _getters;
 
             /// <summary>
-            /// The schema of the metadata row. It is different from the schema that the column belongs to.
+            /// The schema of the annotation row. It is different from the schema that the column belongs to.
             /// </summary>
             public DataViewSchema Schema { get; }
 
-            public static Metadata Empty { get; } = new Metadata(new DataViewSchema(new Column[0]), new Delegate[0]);
+            public static Annotations Empty { get; } = new Annotations(new DataViewSchema(new Column[0]), new Delegate[0]);
 
             /// <summary>
-            /// Create a metadata row by supplying the schema columns and the getter delegates for all the values.
+            /// Create an annotations row by supplying the schema columns and the getter delegates for all the values.
             /// </summary>
             /// <remarks>
-            /// Note: The <paramref name="getters"/> array will be owned by this Metadata instance.
+            /// Note: The <paramref name="getters"/> array will be owned by this <see cref="Annotations"/> instance.
             /// </remarks>
-            internal Metadata(DataViewSchema schema, Delegate[] getters)
+            internal Annotations(DataViewSchema schema, Delegate[] getters)
             {
                 Debug.Assert(schema != null);
                 Debug.Assert(getters != null);
@@ -215,7 +215,7 @@ namespace Microsoft.Data.DataView
             }
 
             /// <summary>
-            /// Get a getter delegate for one value of the metadata row.
+            /// Get a getter delegate for one value of the annotation row.
             /// </summary>
             public ValueGetter<TValue> GetGetter<TValue>(int col)
             {
@@ -225,19 +225,19 @@ namespace Microsoft.Data.DataView
                 if (typedGetter == null)
                 {
                     Debug.Assert(_getters[col] != null);
-                    throw new InvalidOperationException("Invalid call to GetMetadata");
+                    throw new InvalidOperationException($"Invalid call to {nameof(GetGetter)}");
                 }
                 return typedGetter;
             }
 
             /// <summary>
-            /// Get the value of the metadata, by metadata kind (aka column name).
+            /// Get the value of the annotation, by kind (aka column name).
             /// </summary>
             public void GetValue<TValue>(string kind, ref TValue value)
             {
                 var column = Schema.GetColumnOrNull(kind);
                 if (column == null)
-                    throw new InvalidOperationException("Invalid call to GetMetadata");
+                    throw new InvalidOperationException($"Invalid call to {nameof(GetValue)}");
                 GetGetter<TValue>(column.Value.Index)(ref value);
             }
 

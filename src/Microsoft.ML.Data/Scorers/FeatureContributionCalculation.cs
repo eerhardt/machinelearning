@@ -327,7 +327,7 @@ namespace Microsoft.ML.Data
                     builder.AddColumn(DefaultColumnNames.FeatureContributions, TextDataViewType.Instance, null);
                     _outputSchema = builder.GetSchema();
                     if (FeatureColumn.HasSlotNames(featureSize))
-                        FeatureColumn.Metadata.GetValue(MetadataUtils.Kinds.SlotNames, ref _slotNames);
+                        FeatureColumn.Annotations.GetValue(MetadataUtils.Kinds.SlotNames, ref _slotNames);
                     else
                         _slotNames = VBufferUtils.CreateEmpty<ReadOnlyMemory<char>>(featureSize);
                 }
@@ -336,11 +336,11 @@ namespace Microsoft.ML.Data
                     var metadataBuilder = new MetadataBuilder();
                     if (InputSchema[FeatureColumn.Index].HasSlotNames(featureSize))
                         metadataBuilder.AddSlotNames(featureSize, (ref VBuffer<ReadOnlyMemory<char>> value) =>
-                            FeatureColumn.Metadata.GetValue(MetadataUtils.Kinds.SlotNames, ref value));
+                            FeatureColumn.Annotations.GetValue(MetadataUtils.Kinds.SlotNames, ref value));
 
                     var schemaBuilder = new SchemaBuilder();
                     var featureContributionType = new VectorType(NumberDataViewType.Single, FeatureColumn.Type as VectorType);
-                    schemaBuilder.AddColumn(DefaultColumnNames.FeatureContributions, featureContributionType, metadataBuilder.GetMetadata());
+                    schemaBuilder.AddColumn(DefaultColumnNames.FeatureContributions, featureContributionType, metadataBuilder.GetAnnotations());
                     _outputSchema = schemaBuilder.GetSchema();
                 }
 

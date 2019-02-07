@@ -602,14 +602,14 @@ namespace Microsoft.ML.Transforms.Normalizers
                 return result;
             }
 
-            private DataViewSchema.Metadata MakeMetadata(int iinfo)
+            private DataViewSchema.Annotations MakeMetadata(int iinfo)
             {
                 var colInfo = _parent.Columns[iinfo];
                 var builder = new MetadataBuilder();
 
                 builder.Add(MetadataUtils.Kinds.IsNormalized, BooleanDataViewType.Instance, (ValueGetter<bool>)IsNormalizedGetter);
-                builder.Add(InputSchema[ColMapNewToOld[iinfo]].Metadata, name => name == MetadataUtils.Kinds.SlotNames);
-                return builder.GetMetadata();
+                builder.Add(InputSchema[ColMapNewToOld[iinfo]].Annotations, name => name == MetadataUtils.Kinds.SlotNames);
+                return builder.GetAnnotations();
             }
 
             private void IsNormalizedGetter(ref bool dst)

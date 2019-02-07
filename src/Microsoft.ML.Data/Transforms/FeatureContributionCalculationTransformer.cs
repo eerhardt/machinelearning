@@ -228,7 +228,7 @@ namespace Microsoft.ML.Data
                     throw Host.ExceptSchemaMismatch(nameof(schema), "feature", _parent.ColumnPairs[0].inputColumnName, "vector of float.", _featureColumnType.ItemType.ToString());
 
                 if (InputSchema[_featureColumnIndex].HasSlotNames(_featureColumnType.Size))
-                    InputSchema[_featureColumnIndex].Metadata.GetValue(MetadataUtils.Kinds.SlotNames, ref _slotNames);
+                    InputSchema[_featureColumnIndex].Annotations.GetValue(MetadataUtils.Kinds.SlotNames, ref _slotNames);
                 else
                     _slotNames = VBufferUtils.CreateEmpty<ReadOnlyMemory<char>>(_featureColumnType.Size);
             }
@@ -239,8 +239,8 @@ namespace Microsoft.ML.Data
             {
                 // Add FeatureContributions column.
                 var builder = new MetadataBuilder();
-                builder.Add(InputSchema[_featureColumnIndex].Metadata, x => x == MetadataUtils.Kinds.SlotNames);
-                return new[] { new DataViewSchema.DetachedColumn(DefaultColumnNames.FeatureContributions, new VectorType(NumberDataViewType.Single, _featureColumnType.Size), builder.GetMetadata()) };
+                builder.Add(InputSchema[_featureColumnIndex].Annotations, x => x == MetadataUtils.Kinds.SlotNames);
+                return new[] { new DataViewSchema.DetachedColumn(DefaultColumnNames.FeatureContributions, new VectorType(NumberDataViewType.Single, _featureColumnType.Size), builder.GetAnnotations()) };
             }
 
             protected override Delegate MakeGetter(DataViewRow input, int iinfo, Func<int, bool> active, out Action disposer)

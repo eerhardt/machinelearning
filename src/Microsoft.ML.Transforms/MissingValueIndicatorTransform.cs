@@ -149,7 +149,7 @@ namespace Microsoft.ML.Transforms
                     // Produce slot names metadata iff the source has (valid) slot names.
                     VectorType typeNames;
                     if (!vectorType.IsKnownSize ||
-                        (typeNames = Source.Schema[Infos[iinfo].Source].Metadata.Schema.GetColumnOrNull(MetadataUtils.Kinds.SlotNames)?.Type as VectorType) == null ||
+                        (typeNames = Source.Schema[Infos[iinfo].Source].Annotations.Schema.GetColumnOrNull(MetadataUtils.Kinds.SlotNames)?.Type as VectorType) == null ||
                         typeNames.Size != vectorType.Size ||
                         !(typeNames.ItemType is TextDataViewType))
                     {
@@ -198,12 +198,12 @@ namespace Microsoft.ML.Transforms
                 Host.Assert(size == 2 * srcVectorType.Size);
 
                 // REVIEW: Do we need to verify that there is metadata or should we just call GetMetadata?
-                var typeNames = Source.Schema[Infos[iinfo].Source].Metadata.Schema.GetColumnOrNull(MetadataUtils.Kinds.SlotNames)?.Type as VectorType;
+                var typeNames = Source.Schema[Infos[iinfo].Source].Annotations.Schema.GetColumnOrNull(MetadataUtils.Kinds.SlotNames)?.Type as VectorType;
                 if (typeNames == null || typeNames.Size != srcVectorType.Size || !(typeNames.ItemType is TextDataViewType))
                     throw MetadataUtils.ExceptGetMetadata();
 
                 var names = default(VBuffer<ReadOnlyMemory<char>>);
-                Source.Schema[Infos[iinfo].Source].Metadata.GetValue(MetadataUtils.Kinds.SlotNames, ref names);
+                Source.Schema[Infos[iinfo].Source].Annotations.GetValue(MetadataUtils.Kinds.SlotNames, ref names);
 
                 // We both assert and check. If this fails, there is a bug somewhere (possibly in this code
                 // but more likely in the implementation of Base. On the other hand, we don't want to proceed

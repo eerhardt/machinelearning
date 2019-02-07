@@ -36,7 +36,7 @@ namespace Microsoft.ML.Data
 
             // Build a schema consisting of a single column.
             var schemaBuilder = new SchemaBuilder();
-            schemaBuilder.AddColumn(scoreColumnName, scoreType, metadataBuilder.GetMetadata());
+            schemaBuilder.AddColumn(scoreColumnName, scoreType, metadataBuilder.GetAnnotations());
 
             return schemaBuilder.GetSchema();
         }
@@ -57,7 +57,7 @@ namespace Microsoft.ML.Data
 
             var schemaBuilder = new SchemaBuilder();
             // Copy Score column from partialSchema.
-            schemaBuilder.AddColumn(partialSchema[0].Name, partialSchema[0].Type, partialSchema[0].Metadata);
+            schemaBuilder.AddColumn(partialSchema[0].Name, partialSchema[0].Type, partialSchema[0].Annotations);
 
             // Create Probability column's metadata.
             var probabilityMetadataBuilder = new MetadataBuilder();
@@ -68,7 +68,7 @@ namespace Microsoft.ML.Data
                 (ref ReadOnlyMemory<char> value) => { value = MetadataUtils.Const.ScoreValueKind.Probability.AsMemory(); });
 
             // Add probability column.
-            schemaBuilder.AddColumn(probabilityColumnName, NumberDataViewType.Single, probabilityMetadataBuilder.GetMetadata());
+            schemaBuilder.AddColumn(probabilityColumnName, NumberDataViewType.Single, probabilityMetadataBuilder.GetAnnotations());
 
             return schemaBuilder.GetSchema();
         }
@@ -98,11 +98,11 @@ namespace Microsoft.ML.Data
                     value = bufferEditor.Commit();
                 });
             // Copy default metadata from the partial schema.
-            metadataBuilder.Add(partialSchema[0].Metadata, (string kind) => true);
+            metadataBuilder.Add(partialSchema[0].Annotations, (string kind) => true);
 
             // Build a schema consisting of a single column. Comparing with partial schema, the only difference is a metadata field.
             var schemaBuilder = new SchemaBuilder();
-            schemaBuilder.AddColumn(partialSchema[0].Name, partialSchema[0].Type, metadataBuilder.GetMetadata());
+            schemaBuilder.AddColumn(partialSchema[0].Name, partialSchema[0].Type, metadataBuilder.GetAnnotations());
 
             return schemaBuilder.GetSchema();
         }
@@ -133,7 +133,7 @@ namespace Microsoft.ML.Data
 
             // Build a schema consisting of a single column.
             var schemaBuilder = new SchemaBuilder();
-            schemaBuilder.AddColumn(MetadataUtils.Const.ScoreValueKind.PredictedLabel, scoreType, metadataBuilder.GetMetadata());
+            schemaBuilder.AddColumn(MetadataUtils.Const.ScoreValueKind.PredictedLabel, scoreType, metadataBuilder.GetAnnotations());
 
             return schemaBuilder.GetSchema();
         }

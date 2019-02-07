@@ -465,11 +465,11 @@ namespace Microsoft.ML.RunTests
             var hs = new HashSet<string>();
             for (int col = 0; col < sch.Count; col++)
             {
-                var typeSlot = sch[col].Metadata.Schema.GetColumnOrNull(MetadataUtils.Kinds.SlotNames)?.Type;
-                var typeKeys = sch[col].Metadata.Schema.GetColumnOrNull(MetadataUtils.Kinds.KeyValues)?.Type;
+                var typeSlot = sch[col].Annotations.Schema.GetColumnOrNull(MetadataUtils.Kinds.SlotNames)?.Type;
+                var typeKeys = sch[col].Annotations.Schema.GetColumnOrNull(MetadataUtils.Kinds.KeyValues)?.Type;
 
                 hs.Clear();
-                foreach (var metaColumn in sch[col].Metadata.Schema)
+                foreach (var metaColumn in sch[col].Annotations.Schema)
                 {
                     if (metaColumn.Name == null || metaColumn.Type == null)
                     {
@@ -574,8 +574,8 @@ namespace Microsoft.ML.RunTests
             var names1 = default(VBuffer<ReadOnlyMemory<char>>);
             var names2 = default(VBuffer<ReadOnlyMemory<char>>);
 
-            var t1 = sch1[col].Metadata.Schema.GetColumnOrNull(kind)?.Type;
-            var t2 = sch2[col].Metadata.Schema.GetColumnOrNull(kind)?.Type;
+            var t1 = sch1[col].Annotations.Schema.GetColumnOrNull(kind)?.Type;
+            var t2 = sch2[col].Annotations.Schema.GetColumnOrNull(kind)?.Type;
             if ((t1 == null) != (t2 == null))
             {
                 Fail("Different null-ness of {0} metadata types", kind);
@@ -613,8 +613,8 @@ namespace Microsoft.ML.RunTests
                 return Failed();
             }
 
-            sch1[col].Metadata.GetValue(kind, ref names1);
-            sch2[col].Metadata.GetValue(kind, ref names2);
+            sch1[col].Annotations.GetValue(kind, ref names1);
+            sch2[col].Annotations.GetValue(kind, ref names2);
             if (!CompareVec(in names1, in names2, (int)size, (a, b) => a.Span.SequenceEqual(b.Span)))
             {
                 Fail("Different {0} metadata values", kind);
@@ -627,7 +627,7 @@ namespace Microsoft.ML.RunTests
         {
             try
             {
-                sch[col].Metadata.GetValue(kind, ref names);
+                sch[col].Annotations.GetValue(kind, ref names);
                 Fail("Getting {0} metadata unexpectedly succeeded", kind);
                 return Failed();
             }

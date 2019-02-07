@@ -606,7 +606,7 @@ namespace Microsoft.ML.Ensemble
             if (isBinary && labelKeyType.Count != 2)
                 throw env.Except("Label is not binary");
             var schema = rmd.Schema.Schema;
-            var mdType = labelCol.Metadata.Schema.GetColumnOrNull(MetadataUtils.Kinds.KeyValues)?.Type as VectorType;
+            var mdType = labelCol.Annotations.Schema.GetColumnOrNull(MetadataUtils.Kinds.KeyValues)?.Type as VectorType;
             if (mdType == null || !mdType.IsKnownSize)
                 throw env.Except("Label column of type key must have a vector of key values metadata");
 
@@ -667,7 +667,7 @@ namespace Microsoft.ML.Ensemble
                 if (!labelType.Equals(curLabelType))
                     throw env.Except("Label column of model {0} has different type than model 0", i);
 
-                var mdType = labelCol.Metadata.Schema.GetColumnOrNull(MetadataUtils.Kinds.KeyValues)?.Type;
+                var mdType = labelCol.Annotations.Schema.GetColumnOrNull(MetadataUtils.Kinds.KeyValues)?.Type;
                 if (!mdType.Equals(keyValuesType))
                     throw env.Except("Label column of model {0} has different key value type than model 0", i);
                 labelCol.GetKeyValues(ref curLabelNames);

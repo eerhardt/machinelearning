@@ -637,7 +637,7 @@ namespace Microsoft.ML.Trainers.FastTree
                     ch.Check(len == _pred._numInputFeatures);
 
                     if (featCol.HasSlotNames(len))
-                        featCol.Metadata.GetValue(MetadataUtils.Kinds.SlotNames, ref _featNames);
+                        featCol.Annotations.GetValue(MetadataUtils.Kinds.SlotNames, ref _featNames);
                     else
                         _featNames = VBufferUtils.CreateEmpty<ReadOnlyMemory<char>>(len);
 

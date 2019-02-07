@@ -42,7 +42,7 @@ namespace Microsoft.ML.Data
 
             private readonly MetadataUtils.MetadataGetter<ReadOnlyMemory<char>> _getScoreColumnKind;
             private readonly MetadataUtils.MetadataGetter<ReadOnlyMemory<char>> _getScoreValueKind;
-            private readonly DataViewSchema.Metadata _predColMetadata;
+            private readonly DataViewSchema.Annotations _predColMetadata;
             private BindingsImpl(DataViewSchema input, ISchemaBoundRowMapper mapper, string suffix, string scoreColumnKind,
                 bool user, int scoreColIndex, DataViewType predColType)
                 : base(input, mapper, suffix, user, DefaultColumnNames.PredictedLabel)
@@ -62,7 +62,7 @@ namespace Microsoft.ML.Data
                 // bearing object makes pushing the logic into the multiclass scorer almost impossible.
                 if (predColType is KeyType predColKeyType && predColKeyType.Count > 0)
                 {
-                    var scoreColMetadata = mapper.OutputSchema[scoreColIndex].Metadata;
+                    var scoreColMetadata = mapper.OutputSchema[scoreColIndex].Annotations;
 
                     var slotColumn = scoreColMetadata.Schema.GetColumnOrNull(MetadataUtils.Kinds.SlotNames);
                     if (slotColumn?.Type is VectorType slotColVecType && (ulong)slotColVecType.Size == predColKeyType.Count)
@@ -84,7 +84,7 @@ namespace Microsoft.ML.Data
                 }
             }
 
-            private static DataViewSchema.Metadata KeyValueMetadataFromMetadata<T>(DataViewSchema.Metadata meta, DataViewSchema.Column metaCol)
+            private static DataViewSchema.Annotations KeyValueMetadataFromMetadata<T>(DataViewSchema.Annotations meta, DataViewSchema.Column metaCol)
             {
                 Contracts.AssertValue(meta);
                 Contracts.Assert(0 <= metaCol.Index && metaCol.Index < meta.Schema.Count);
@@ -92,7 +92,7 @@ namespace Microsoft.ML.Data
                 var getter = meta.GetGetter<T>(metaCol.Index);
                 var builder = new MetadataBuilder();
                 builder.Add(MetadataUtils.Kinds.KeyValues, metaCol.Type, meta.GetGetter<T>(metaCol.Index));
-                return builder.GetMetadata();
+                return builder.GetAnnotations();
             }
 
             public static BindingsImpl Create(DataViewSchema input, ISchemaBoundRowMapper mapper, string suffix,

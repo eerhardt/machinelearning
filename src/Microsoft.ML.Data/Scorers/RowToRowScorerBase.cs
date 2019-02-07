@@ -431,7 +431,7 @@ namespace Microsoft.ML.Data
             yield return MetadataUtils.ScoreColumnSetIdType.GetPair(MetadataUtils.Kinds.ScoreColumnSetId);
             if (iinfo < DerivedColumnCount)
                 yield break;
-            foreach (var pair in Mapper.OutputSchema[iinfo - DerivedColumnCount].Metadata.Schema.Select(c => new KeyValuePair<string, DataViewType>(c.Name, c.Type)))
+            foreach (var pair in Mapper.OutputSchema[iinfo - DerivedColumnCount].Annotations.Schema.Select(c => new KeyValuePair<string, DataViewType>(c.Name, c.Type)))
                 yield return pair;
         }
 
@@ -442,7 +442,7 @@ namespace Microsoft.ML.Data
                 return MetadataUtils.ScoreColumnSetIdType;
             if (iinfo < DerivedColumnCount)
                 return null;
-            return Mapper.OutputSchema[iinfo - DerivedColumnCount].Metadata.Schema.GetColumnOrNull(kind)?.Type;
+            return Mapper.OutputSchema[iinfo - DerivedColumnCount].Annotations.Schema.GetColumnOrNull(kind)?.Type;
         }
 
         protected override void GetMetadataCore<TValue>(string kind, int iinfo, ref TValue value)
@@ -456,7 +456,7 @@ namespace Microsoft.ML.Data
                 default:
                     if (iinfo < DerivedColumnCount)
                         throw MetadataUtils.ExceptGetMetadata();
-                    Mapper.OutputSchema[iinfo - DerivedColumnCount].Metadata.GetValue(kind, ref value);
+                    Mapper.OutputSchema[iinfo - DerivedColumnCount].Annotations.GetValue(kind, ref value);
                     break;
             }
         }

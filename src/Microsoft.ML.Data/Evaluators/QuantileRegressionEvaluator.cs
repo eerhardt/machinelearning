@@ -44,10 +44,10 @@ namespace Microsoft.ML.Data
             Host.CheckParam(schema.Label.HasValue, nameof(schema), "Must contain a label column");
             var scoreInfo = schema.GetUniqueColumn(MetadataUtils.Const.ScoreValueKind.Score);
             int scoreSize = scoreInfo.Type.GetVectorSize();
-            var type = schema.Schema[scoreInfo.Index].Metadata.Schema.GetColumnOrNull(MetadataUtils.Kinds.SlotNames)?.Type as VectorType;
+            var type = schema.Schema[scoreInfo.Index].Annotations.Schema.GetColumnOrNull(MetadataUtils.Kinds.SlotNames)?.Type as VectorType;
             Host.Check(type != null && type.IsKnownSize && type.ItemType is TextDataViewType, "Quantile regression score column must have slot names");
             var quantiles = default(VBuffer<ReadOnlyMemory<char>>);
-            schema.Schema[scoreInfo.Index].Metadata.GetValue(MetadataUtils.Kinds.SlotNames, ref quantiles);
+            schema.Schema[scoreInfo.Index].Annotations.GetValue(MetadataUtils.Kinds.SlotNames, ref quantiles);
             Host.Assert(quantiles.IsDense && quantiles.Length == scoreSize);
 
             return new QuantileRegressionPerInstanceEvaluator(Host, schema.Schema, scoreInfo.Name, schema.Label.Value.Name, scoreSize, quantiles);
@@ -71,7 +71,7 @@ namespace Microsoft.ML.Data
             var scoreType = scoreInfo.Type as VectorType;
             Host.Assert(scoreType != null && scoreType.Size > 0 && (scoreType.ItemType == NumberDataViewType.Single || scoreType.ItemType == NumberDataViewType.Double));
             var slotNames = default(VBuffer<ReadOnlyMemory<char>>);
-            var slotNamesType = schema.Schema[scoreInfo.Index].Metadata.Schema.GetColumnOrNull(MetadataUtils.Kinds.SlotNames)?.Type as VectorType;
+            var slotNamesType = schema.Schema[scoreInfo.Index].Annotations.Schema.GetColumnOrNull(MetadataUtils.Kinds.SlotNames)?.Type as VectorType;
             if (slotNamesType != null && slotNamesType.Size == scoreType.Size && slotNamesType.ItemType is TextDataViewType)
                 schema.Schema[scoreInfo.Index].GetSlotNames(ref slotNames);
             return new Aggregator(Host, LossFunction, schema.Weight != null, scoreType.Size, in slotNames, stratName);
@@ -359,8 +359,8 @@ namespace Microsoft.ML.Data
             var l2Metadata = new MetadataBuilder();
             l2Metadata.AddSlotNames(_scoreSize, CreateSlotNamesGetter(L2));
 
-            infos[L1Col] = new DataViewSchema.DetachedColumn(L1, _outputType, l1Metadata.GetMetadata());
-            infos[L2Col] = new DataViewSchema.DetachedColumn(L2, _outputType, l2Metadata.GetMetadata());
+            infos[L1Col] = new DataViewSchema.DetachedColumn(L1, _outputType, l1Metadata.GetAnnotations());
+            infos[L2Col] = new DataViewSchema.DetachedColumn(L2, _outputType, l2Metadata.GetAnnotations());
             return infos;
         }
 

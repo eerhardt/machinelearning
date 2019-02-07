@@ -12,14 +12,14 @@ namespace Microsoft.Data.DataView
     /// </summary>
     public sealed class SchemaBuilder
     {
-        private readonly List<(string Name, DataViewType Type, DataViewSchema.Metadata Metadata)> _items;
+        private readonly List<(string Name, DataViewType Type, DataViewSchema.Annotations Annotations)> _items;
 
         /// <summary>
         /// Create a new instance of <see cref="SchemaBuilder"/>.
         /// </summary>
         public SchemaBuilder()
         {
-            _items = new List<(string Name, DataViewType Type, DataViewSchema.Metadata Metadata)>();
+            _items = new List<(string Name, DataViewType Type, DataViewSchema.Annotations Annotations)>();
         }
 
         /// <summary>
@@ -27,15 +27,15 @@ namespace Microsoft.Data.DataView
         /// </summary>
         /// <param name="name">The column name.</param>
         /// <param name="type">The column type.</param>
-        /// <param name="metadata">The column metadata.</param>
-        public void AddColumn(string name, DataViewType type, DataViewSchema.Metadata metadata = null)
+        /// <param name="annotations">The column annotations.</param>
+        public void AddColumn(string name, DataViewType type, DataViewSchema.Annotations annotations = null)
         {
             if (string.IsNullOrEmpty(name))
                 throw new ArgumentNullException(nameof(name));
             if (type == null)
                 throw new ArgumentNullException(nameof(type));
 
-            _items.Add((name, type, metadata));
+            _items.Add((name, type, annotations));
         }
 
         /// <summary>
@@ -45,7 +45,7 @@ namespace Microsoft.Data.DataView
         public void AddColumns(IEnumerable<DataViewSchema.Column> source)
         {
             foreach (var column in source)
-                AddColumn(column.Name, column.Type, column.Metadata);
+                AddColumn(column.Name, column.Type, column.Annotations);
         }
 
         /// <summary>
@@ -55,7 +55,7 @@ namespace Microsoft.Data.DataView
         public void AddColumns(IEnumerable<DataViewSchema.DetachedColumn> source)
         {
             foreach (var column in source)
-                AddColumn(column.Name, column.Type, column.Metadata);
+                AddColumn(column.Name, column.Type, column.Annotations);
         }
 
         /// <summary>
@@ -69,7 +69,7 @@ namespace Microsoft.Data.DataView
 
             var columns = new DataViewSchema.Column[_items.Count];
             for (int i = 0; i < columns.Length; i++)
-                columns[i] = new DataViewSchema.Column(_items[i].Name, i, nameMap[_items[i].Name] != i, _items[i].Type, _items[i].Metadata);
+                columns[i] = new DataViewSchema.Column(_items[i].Name, i, nameMap[_items[i].Name] != i, _items[i].Type, _items[i].Annotations);
 
             return new DataViewSchema(columns);
         }

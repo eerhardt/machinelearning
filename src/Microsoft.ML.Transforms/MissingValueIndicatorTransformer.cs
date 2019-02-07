@@ -199,13 +199,13 @@ namespace Microsoft.ML.Transforms
                     InputSchema.TryGetColumnIndex(_infos[iinfo].InputColumnName, out int colIndex);
                     Host.Assert(colIndex >= 0);
                     var builder = new MetadataBuilder();
-                    builder.Add(InputSchema[colIndex].Metadata, x => x == MetadataUtils.Kinds.SlotNames);
+                    builder.Add(InputSchema[colIndex].Annotations, x => x == MetadataUtils.Kinds.SlotNames);
                     ValueGetter<bool> getter = (ref bool dst) =>
                     {
                         dst = true;
                     };
                     builder.Add(MetadataUtils.Kinds.IsNormalized, BooleanDataViewType.Instance, getter);
-                    result[iinfo] = new DataViewSchema.DetachedColumn(_infos[iinfo].Name, _infos[iinfo].OutputType, builder.GetMetadata());
+                    result[iinfo] = new DataViewSchema.DetachedColumn(_infos[iinfo].Name, _infos[iinfo].OutputType, builder.GetAnnotations());
                 }
                 return result;
             }

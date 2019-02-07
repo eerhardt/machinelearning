@@ -441,7 +441,7 @@ namespace Microsoft.ML.Transforms.Conversions
                     var builder = new MetadataBuilder();
                     var srcType = InputSchema[_srcCols[i]].Type;
                     if (_types[i].IsKnownSizeVector())
-                        builder.Add(InputSchema[ColMapNewToOld[i]].Metadata, name => name == MetadataUtils.Kinds.SlotNames);
+                        builder.Add(InputSchema[ColMapNewToOld[i]].Annotations, name => name == MetadataUtils.Kinds.SlotNames);
 
                     DataViewType srcItemType = srcType.GetItemType();
                     DataViewType currentItemType = _types[i].GetItemType();
@@ -451,17 +451,17 @@ namespace Microsoft.ML.Transforms.Conversions
                     if (srcItemKeyType != null && currentItemKeyType != null &&
                         srcItemKeyType.Count > 0 && srcItemKeyType.Count == currentItemKeyType.Count)
                     {
-                        builder.Add(InputSchema[ColMapNewToOld[i]].Metadata, name => name == MetadataUtils.Kinds.KeyValues);
+                        builder.Add(InputSchema[ColMapNewToOld[i]].Annotations, name => name == MetadataUtils.Kinds.KeyValues);
                     }
 
                     if (srcItemType is NumberDataViewType && currentItemType is NumberDataViewType)
-                        builder.Add(InputSchema[ColMapNewToOld[i]].Metadata, name => name == MetadataUtils.Kinds.IsNormalized);
+                        builder.Add(InputSchema[ColMapNewToOld[i]].Annotations, name => name == MetadataUtils.Kinds.IsNormalized);
                     if (srcType is BooleanDataViewType && currentItemType is NumberDataViewType)
                     {
                         ValueGetter<bool> getter = (ref bool dst) => dst = true;
                         builder.Add(MetadataUtils.Kinds.IsNormalized, BooleanDataViewType.Instance, getter);
                     }
-                    result[i] = new DataViewSchema.DetachedColumn(_parent._columns[i].Name, _types[i], builder.GetMetadata());
+                    result[i] = new DataViewSchema.DetachedColumn(_parent._columns[i].Name, _types[i], builder.GetAnnotations());
                 }
                 return result;
             }

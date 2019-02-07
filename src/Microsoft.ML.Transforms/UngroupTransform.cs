@@ -296,13 +296,13 @@ namespace Microsoft.ML.Transforms
                     if (_pivotIndex[i] < 0)
                     {
                         // i-th input column is not a pivot column. Let's do a naive copy.
-                        schemaBuilder.AddColumn(inputSchema[i].Name, inputSchema[i].Type, inputSchema[i].Metadata);
+                        schemaBuilder.AddColumn(inputSchema[i].Name, inputSchema[i].Type, inputSchema[i].Annotations);
                     }
                     else
                     {
                         // i-th input column is a pivot column. Let's calculate proper type and metadata for it.
                         var metadataBuilder = new MetadataBuilder();
-                        metadataBuilder.Add(inputSchema[i].Metadata, metadataName => ShouldPreserveMetadata(metadataName));
+                        metadataBuilder.Add(inputSchema[i].Annotations, metadataName => ShouldPreserveMetadata(metadataName));
                         // To explain the output type of pivot columns, let's consider a row
                         //   Age UserID
                         //   18  {"Amy", "Willy"}
@@ -312,7 +312,7 @@ namespace Microsoft.ML.Transforms
                         //   18  "Amy"
                         //   18  "Willy"
                         // One can see that "UserID" column (in output data) has a type identical to the element's type of the "UserID" column in input data.
-                        schemaBuilder.AddColumn(inputSchema[i].Name, inputSchema[i].Type.GetItemType(), metadataBuilder.GetMetadata());
+                        schemaBuilder.AddColumn(inputSchema[i].Name, inputSchema[i].Type.GetItemType(), metadataBuilder.GetAnnotations());
                     }
                 }
                 OutputSchema = schemaBuilder.GetSchema();

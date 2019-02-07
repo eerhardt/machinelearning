@@ -227,39 +227,39 @@ namespace Microsoft.ML.Tests.Scenarios.Api
             var mySchema = new SchemaDefinition { labelColumnWithMetadata, featureColumnWithMetadata };
             var idv = mlContext.Data.ReadFromEnumerable(data, mySchema);
 
-            Assert.True(idv.Schema[0].Metadata.Schema.Count == 2);
-            Assert.True(idv.Schema[0].Metadata.Schema[0].Name == kindFloat);
-            Assert.True(idv.Schema[0].Metadata.Schema[0].Type == coltypeFloat);
-            Assert.True(idv.Schema[0].Metadata.Schema[1].Name == kindString);
-            Assert.True(idv.Schema[0].Metadata.Schema[1].Type == TextDataViewType.Instance);
+            Assert.True(idv.Schema[0].Annotations.Schema.Count == 2);
+            Assert.True(idv.Schema[0].Annotations.Schema[0].Name == kindFloat);
+            Assert.True(idv.Schema[0].Annotations.Schema[0].Type == coltypeFloat);
+            Assert.True(idv.Schema[0].Annotations.Schema[1].Name == kindString);
+            Assert.True(idv.Schema[0].Annotations.Schema[1].Type == TextDataViewType.Instance);
 
-            Assert.True(idv.Schema[1].Metadata.Schema.Count == 3);
-            Assert.True(idv.Schema[1].Metadata.Schema[0].Name == kindStringArray);
-            Assert.True(idv.Schema[1].Metadata.Schema[0].Type is VectorType vectorType && vectorType.ItemType is TextDataViewType);
-            Assert.Throws<ArgumentOutOfRangeException>(() => idv.Schema[1].Metadata.Schema[kindFloat]);
+            Assert.True(idv.Schema[1].Annotations.Schema.Count == 3);
+            Assert.True(idv.Schema[1].Annotations.Schema[0].Name == kindStringArray);
+            Assert.True(idv.Schema[1].Annotations.Schema[0].Type is VectorType vectorType && vectorType.ItemType is TextDataViewType);
+            Assert.Throws<ArgumentOutOfRangeException>(() => idv.Schema[1].Annotations.Schema[kindFloat]);
 
             float retrievedFloat = 0;
-            idv.Schema[0].Metadata.GetValue(kindFloat, ref retrievedFloat);
+            idv.Schema[0].Annotations.GetValue(kindFloat, ref retrievedFloat);
             Assert.True(Math.Abs(retrievedFloat - valueFloat) < .000001);
 
             ReadOnlyMemory<char> retrievedReadOnlyMemory = new ReadOnlyMemory<char>();
-            idv.Schema[0].Metadata.GetValue(kindString, ref retrievedReadOnlyMemory);
+            idv.Schema[0].Annotations.GetValue(kindString, ref retrievedReadOnlyMemory);
             Assert.True(retrievedReadOnlyMemory.Span.SequenceEqual(valueString.AsMemory().Span));
 
             VBuffer<ReadOnlyMemory<char>> retrievedReadOnlyMemoryVBuffer = new VBuffer<ReadOnlyMemory<char>>();
-            idv.Schema[1].Metadata.GetValue(kindStringArray, ref retrievedReadOnlyMemoryVBuffer);
+            idv.Schema[1].Annotations.GetValue(kindStringArray, ref retrievedReadOnlyMemoryVBuffer);
             Assert.True(retrievedReadOnlyMemoryVBuffer.DenseValues().Select((s, i) => s.ToString() == valueStringArray[i]).All(b => b));
 
             VBuffer<float> retrievedFloatVBuffer = new VBuffer<float>(1, new float[] { 2 });
-            idv.Schema[1].Metadata.GetValue(kindFloatArray, ref retrievedFloatVBuffer);
+            idv.Schema[1].Annotations.GetValue(kindFloatArray, ref retrievedFloatVBuffer);
             VBuffer<float> valueFloatVBuffer = new VBuffer<float>(valueFloatArray.Length, valueFloatArray);
             Assert.True(retrievedFloatVBuffer.Items().SequenceEqual(valueFloatVBuffer.Items()));
 
             VBuffer<float> retrievedVBuffer = new VBuffer<float>();
-            idv.Schema[1].Metadata.GetValue(kindVBuffer, ref retrievedVBuffer);
+            idv.Schema[1].Annotations.GetValue(kindVBuffer, ref retrievedVBuffer);
             Assert.True(retrievedVBuffer.Items().SequenceEqual(valueVBuffer.Items()));
 
-            Assert.Throws<InvalidOperationException>(() => idv.Schema[1].Metadata.GetValue(kindFloat, ref retrievedReadOnlyMemoryVBuffer));
+            Assert.Throws<InvalidOperationException>(() => idv.Schema[1].Annotations.GetValue(kindFloat, ref retrievedReadOnlyMemoryVBuffer));
         }
 
         private List<BreastCancerExample> ReadBreastCancerExamples()

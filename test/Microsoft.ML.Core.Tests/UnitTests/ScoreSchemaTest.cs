@@ -51,7 +51,7 @@ namespace Microsoft.ML.RunTests
             Assert.Equal(expectedScoreColumnType.RawType, actualScoreColumnType.RawType);
 
             // Check metadata. Because keyNames is not empty, there should be three metadata fields.
-            var scoreMetadata = scoreColumn.Metadata;
+            var scoreMetadata = scoreColumn.Annotations;
             Assert.Equal(3, scoreMetadata.Schema.Count);
 
             // Check metadata columns' names.
@@ -63,8 +63,8 @@ namespace Microsoft.ML.RunTests
             Assert.True(scoreMetadata.Schema[0].Type is VectorType);
             Assert.Equal(keyNames.Length, (scoreMetadata.Schema[0].Type as VectorType).Size);
             Assert.Equal(TextDataViewType.Instance, (scoreMetadata.Schema[0].Type as VectorType).ItemType);
-            Assert.Equal(TextDataViewType.Instance, scoreColumn.Metadata.Schema[1].Type);
-            Assert.Equal(TextDataViewType.Instance, scoreColumn.Metadata.Schema[2].Type);
+            Assert.Equal(TextDataViewType.Instance, scoreColumn.Annotations.Schema[1].Type);
+            Assert.Equal(TextDataViewType.Instance, scoreColumn.Annotations.Schema[2].Type);
 
             // Check metadata columns' values.
             var keyNamesGetter = scoreMetadata.GetGetter<VBuffer<ReadOnlyMemory<char>>>(0);
@@ -108,7 +108,7 @@ namespace Microsoft.ML.RunTests
             Assert.Equal(expectedScoreColumnType.RawType, actualScoreColumnType.RawType);
 
             // Check metadata. Because keyNames is not empty, there should be three metadata fields.
-            var scoreMetadata = scoreColumn.Metadata;
+            var scoreMetadata = scoreColumn.Annotations;
             Assert.Equal(2, scoreMetadata.Schema.Count);
 
             // Check metadata columns' names.
@@ -116,8 +116,8 @@ namespace Microsoft.ML.RunTests
             Assert.Equal(MetadataUtils.Kinds.ScoreValueKind, scoreMetadata.Schema[1].Name);
 
             // Check metadata columns' types.
-            Assert.Equal(TextDataViewType.Instance, scoreColumn.Metadata.Schema[0].Type);
-            Assert.Equal(TextDataViewType.Instance, scoreColumn.Metadata.Schema[1].Type);
+            Assert.Equal(TextDataViewType.Instance, scoreColumn.Annotations.Schema[0].Type);
+            Assert.Equal(TextDataViewType.Instance, scoreColumn.Annotations.Schema[1].Type);
 
             // Check metadata columns' values.
             var scoreColumnKindGetter = scoreMetadata.GetGetter<ReadOnlyMemory<char>>(0);

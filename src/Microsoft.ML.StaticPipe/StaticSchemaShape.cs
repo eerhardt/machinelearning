@@ -247,7 +247,7 @@ namespace Microsoft.ML.StaticPipe.Runtime
                 {
                     // Check to see if the column is normalized.
                     // Once we shift to metadata being a row globally we can also make this a bit more efficient:
-                    var meta = col.Metadata;
+                    var meta = col.Annotations;
                     if (meta.Schema.TryGetColumnIndex(MetadataUtils.Kinds.IsNormalized, out int normcol))
                     {
                         var normtype = meta.Schema[normcol].Type;
@@ -276,7 +276,7 @@ namespace Microsoft.ML.StaticPipe.Runtime
                 if (kt.Count > 0)
                 {
                     // Check to see if we have key value metadata of the appropriate type, size, and whatnot.
-                    var meta = col.Metadata;
+                    var meta = col.Annotations;
                     if (meta.Schema.TryGetColumnIndex(MetadataUtils.Kinds.KeyValues, out int kvcolIndex))
                     {
                         var kvcol = meta.Schema[kvcolIndex];
