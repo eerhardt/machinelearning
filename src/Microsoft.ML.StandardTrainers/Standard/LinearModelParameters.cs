@@ -102,12 +102,6 @@ namespace Microsoft.ML.Trainers
         bool ICanSaveOnnx.CanSaveOnnx(OnnxContext ctx) => true;
 
         /// <summary>
-        /// Used to determine the contribution of each feature to the score of an example by <see cref="FeatureContributionCalculatingTransformer"/>.
-        /// For linear models, the contribution of a given feature is equal to the product of feature value times the corresponding weight.
-        /// </summary>
-        FeatureContributionCalculator ICalculateFeatureContribution.FeatureContributionCalculator => new FeatureContributionCalculator(this);
-
-        /// <summary>
         /// Constructs a new linear predictor.
         /// </summary>
         /// <param name="env">The host environment.</param>
