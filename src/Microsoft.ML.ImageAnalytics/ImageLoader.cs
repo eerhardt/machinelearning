@@ -3,6 +3,7 @@
 // See the LICENSE file in the project root for more information.
 
 using System;
+using System.Buffers;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
@@ -191,14 +192,12 @@ namespace Microsoft.ML.Data
         {
             private readonly ImageLoadingTransformer _parent;
             private readonly bool _type;
-            private readonly ConcurrentBag<byte[]> _bufferPool;
 
             public Mapper(ImageLoadingTransformer parent, DataViewSchema inputSchema, bool type)
                 : base(parent.Host.Register(nameof(Mapper)), parent, inputSchema)
             {
                 _type = type;
                 _parent = parent;
-                _bufferPool = new ConcurrentBag<byte[]>();
             }
 
             protected override Delegate MakeGetter(DataViewRow input, int iinfo, Func<int, bool> activeOutput, out Action disposer)
@@ -257,14 +256,6 @@ namespace Microsoft.ML.Data
                 ValueGetter<VBuffer<byte>> del =
                     (ref VBuffer<byte> dst) =>
                     {
-                        byte[] buffer = null;
-                        bool addBufferBack = false;
-                        if (!_bufferPool.TryTake(out buffer))
-                        {
-                            buffer = new byte[4096];
-                            addBufferBack = true;
-                        }
-
                         getSrc(ref src);
 
                         if (src.Length > 0)
@@ -272,21 +263,15 @@ namespace Microsoft.ML.Data
                             string path = src.ToString();
                             if (!string.IsNullOrWhiteSpace(_parent.ImageFolder))
                                 path = Path.Combine(_parent.ImageFolder, path);
-                            if (!TryLoadDataIntoBuffer(path, ref dst, buffer))
+                            if (!TryLoadDataIntoBuffer(path, ref dst))
                                 throw Host.Except($"Failed to load image {src.ToString()}.");
-                        }
-
-                        if (addBufferBack)
-                        {
-                            Contract.Assert(buffer != null);
-                            _bufferPool.Add(buffer);
                         }
                     };
 
                 return del;
             }
 
-            private static bool TryLoadDataIntoBuffer(string path, ref VBuffer<byte> imgData, byte[] readBuffer)
+            private static bool TryLoadDataIntoBuffer(string path, ref VBuffer<byte> imgData)
             {
                 int count = -1;
                 int bytesread = -1;
@@ -309,27 +294,44 @@ namespace Microsoft.ML.Data
 
                     count = (int)fileLength;
                     var editor = VBufferEditor.Create(ref imgData, count);
-                    bytesread = ReadToEnd(fs, editor.Values, readBuffer);
+                    bytesread = ReadToEnd(fs, editor.Values);
                     imgData = editor.Commit();
                     return (count > 0);
                 }
 
             }
 
-            private static int ReadToEnd(System.IO.Stream stream, Span<byte> bufferSpan, byte[] readBuffer)
+            private static int ReadToEnd(System.IO.Stream stream, Span<byte> bufferSpan)
             {
                 int totalBytesRead = 0;
-                int bytesRead;
-                var readBufferSpan = readBuffer.AsSpan();
-                var srcSpan = readBufferSpan;
-                while ((bytesRead = stream.Read(readBuffer, 0, readBuffer.Length)) > 0)
+#if NETSTANDARD2_0
+                byte[] readBuffer = ArrayPool<byte>.Shared.Rent(4096);
+                try
                 {
-                    if (bytesRead != srcSpan.Length)
-                        srcSpan = readBufferSpan.Slice(0, bytesRead);
-                    var dstSpan = bufferSpan.Slice(totalBytesRead, bytesRead);
-                    srcSpan.CopyTo(dstSpan);
-                    totalBytesRead += bytesRead;
+                    int bytesRead;
+                    var readBufferSpan = readBuffer.AsSpan();
+                    var srcSpan = readBufferSpan;
+                    while ((bytesRead = stream.Read(readBuffer, 0, readBuffer.Length)) > 0)
+                    {
+                        if (bytesRead != srcSpan.Length)
+                            srcSpan = readBufferSpan.Slice(0, bytesRead);
+                        var dstSpan = bufferSpan.Slice(totalBytesRead, bytesRead);
+                        srcSpan.CopyTo(dstSpan);
+                        totalBytesRead += bytesRead;
+                    }
                 }
+                finally
+                {
+                   ArrayPool<byte>.Shared.Return(readBuffer);
+                }
+#else
+                int bytesRead;
+                while ((bytesRead = stream.Read(bufferSpan)) > 0)
+                {
+                    totalBytesRead += bytesRead;
+                    bufferSpan = bufferSpan.Slice(bytesRead);
+                }
+#endif
                 return totalBytesRead;
             }
 
