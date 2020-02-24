@@ -37,4 +37,28 @@
     <NativeAssemblyReference Condition="'$(OS)' == 'Windows_NT'" Include="libiomp5md"/>
   </ItemGroup>
 
+  <Target Name="CopyNativeAssembliesForPublish"
+          BeforeTargets="ComputeFilesToPublish">
+
+    <PropertyGroup>
+      <LibPrefix Condition="'$(OS)' != 'Windows_NT'">lib</LibPrefix>
+      <LibExtension Condition="'$(OS)' == 'Windows_NT'">.dll</LibExtension>
+      <LibExtension Condition="'$(OS)' != 'Windows_NT'">.so</LibExtension>
+      <LibExtension Condition="$([MSBuild]::IsOSPlatform('osx'))">.dylib</LibExtension>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <NativeAssemblyReference>
+        <FullAssemblyPath>$(NativeOutputPath)$(LibPrefix)%(NativeAssemblyReference.Identity)$(LibExtension)</FullAssemblyPath>
+      </NativeAssemblyReference>
+    </ItemGroup>
+
+    <ItemGroup>
+      <ResolvedFileToPublish Include="@(NativeAssemblyReference->'%(FullAssemblyPath)')">
+        <RelativePath>$(LibPrefix)%(NativeAssemblyReference.Identity)$(LibExtension)</RelativePath>
+        <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      </ResolvedFileToPublish>
+      </ItemGroup>
+  </Target>
+
 </Project>
